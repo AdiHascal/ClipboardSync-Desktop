@@ -1,8 +1,9 @@
 package com.adihascal.clipboardsync;
 
+import com.adihascal.clipboardsync.network.SyncClient;
+import com.adihascal.clipboardsync.network.SyncServer;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
-import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
@@ -14,14 +15,14 @@ import java.awt.datatransfer.ClipboardOwner;
 import java.awt.datatransfer.Transferable;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
 import java.net.InetAddress;
 import java.util.EnumMap;
 import java.util.Map;
 
 public class Main implements ClipboardOwner
 {
-	static final Main INSTANCE = new Main();
+	public static final Main INSTANCE = new Main();
+	public final static String localFolderName = System.getProperty("user.home") + "/AppData/Local/ClipboardSync";
 	private static int port;
 	private static SyncServer server = new SyncServer();
 	
@@ -30,6 +31,14 @@ public class Main implements ClipboardOwner
 		port = 63708;
 		try
 		{
+			File localFolder = new File(localFolderName);
+			if(!localFolder.exists())
+			{
+				if(!localFolder.mkdir())
+				{
+					throw new Exception("failed to create temporary folder");
+				}
+			}
 			File imageFile = new File("C:/Users/Daniel/Desktop/image.png");
 			Map<EncodeHintType, Object> hintMap = new EnumMap<>(EncodeHintType.class);
 			hintMap.put(EncodeHintType.CHARACTER_SET, "UTF-8");
@@ -58,7 +67,7 @@ public class Main implements ClipboardOwner
 				}
 			}
 			ImageIO.write(image, "png", imageFile);
-		} catch(WriterException | IOException e)
+		} catch(Exception e)
 		{
 			e.printStackTrace();
 		}
@@ -72,7 +81,7 @@ public class Main implements ClipboardOwner
 		server.start();
 	}
 	
-	static int getPort()
+	public static int getPort()
 	{
 		return port;
 	}
