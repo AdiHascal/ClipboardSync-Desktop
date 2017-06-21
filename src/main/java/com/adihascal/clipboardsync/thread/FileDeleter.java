@@ -4,24 +4,19 @@ import java.io.File;
 
 public class FileDeleter implements Runnable
 {
-	File dir;
+	private File[] files;
 	
 	public FileDeleter(File f)
 	{
-		this.dir = f;
+		this.files = f.listFiles();
 	}
 	
 	@Override
 	public void run()
 	{
-		File[] files = dir.listFiles();
-		
-		if(files != null)
+		for(File f : files)
 		{
-			for(File f : files)
-			{
-				f.delete();
-			}
+			f.delete();
 		}
 	}
 }

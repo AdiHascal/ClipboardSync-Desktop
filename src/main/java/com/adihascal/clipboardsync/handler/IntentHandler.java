@@ -20,7 +20,7 @@ public class IntentHandler implements IClipHandler
 	{
 		List<File> files = (List<File>) clip.getTransferData(DataFlavor.javaFileListFlavor);
 		
-		DataOutputStream out = new DataOutputStream(s.getOutputStream());
+		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(s.getOutputStream(), 104857600));
 		out.writeUTF("application/x-java-serialized-object");
 		out.write(files.size());
 		
@@ -28,9 +28,10 @@ public class IntentHandler implements IClipHandler
 		{
 			FileInputStream in = new FileInputStream(f);
 			out.writeUTF(f.getName());
-			out.write((int) f.length());
+			out.writeLong(f.length());
 			byte[] data = IOUtils.readFully(in, -1, true);
 			out.write(data);
+			out.flush();
 			in.close();
 		}
 	}
@@ -38,20 +39,19 @@ public class IntentHandler implements IClipHandler
 	@Override
 	public void receiveClip(DataInputStream s, Clipboard manager) throws IOException
 	{
-		File dir = new File(Main.localFolderName);
-		new Thread(new FileDeleter(dir)).start();
+		new Thread(new FileDeleter(Main.localFolder)).start();
 		
-		int nFiles = s.readInt();
+		int nFiles = s.read();
 		File[] toTransfer = new File[nFiles];
 		byte[] buf;
 		
 		for(int i = 0; i < nFiles; i++)
 		{
-			File f = new File(Main.localFolderName, s.readUTF());
+			File f = new File(Main.localFolder, s.readUTF());
 			if(f.createNewFile())
 			{
 				FileOutputStream out = new FileOutputStream(f);
-				buf = new byte[s.read()];
+				buf = new byte[Math.toIntExact(s.readLong())];
 				s.read(buf);
 				out.write(buf);
 				out.close();

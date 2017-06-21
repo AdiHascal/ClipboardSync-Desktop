@@ -4,6 +4,8 @@ import com.adihascal.clipboardsync.Main;
 import com.adihascal.clipboardsync.handler.ClipHandlerRegistry;
 
 import java.awt.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -12,43 +14,50 @@ import java.net.Socket;
 public class SyncServer extends Thread
 {
 	public volatile boolean shouldRun = true;
+	private ServerSocket serverSocket;
 	
 	@Override
 	public void run()
 	{
-		while(this.shouldRun)
+		try
 		{
-			ServerSocket serverSocket = null;
-			Socket s = null;
-			try
+			serverSocket = new ServerSocket(Main.getPort());
+			while(this.shouldRun)
 			{
-				serverSocket = new ServerSocket(Main.getPort());
 				System.out.println("starting server");
-				s = serverSocket.accept();
-				DataInputStream is = new DataInputStream(s.getInputStream());
-				String mt = is.readUTF();
-				if(ClipHandlerRegistry.isMimeTypeSupported(mt))
+				Socket s = serverSocket.accept();
+				DataInputStream socketIn = new DataInputStream(s.getInputStream());
+				ByteArrayOutputStream out = new ByteArrayOutputStream();
+				int i;
+				do
 				{
-					ClipHandlerRegistry.getHandlerFor(mt).receiveClip(is, Toolkit.getDefaultToolkit().getSystemClipboard());
-				}
-				System.out.println("data received");
-			} catch(IOException e)
-			{
-				e.printStackTrace();
-			} finally
-			{
-				try
-				{
-					if(serverSocket != null && s != null)
+					i = socketIn.read();
+					if(i != -1)
 					{
-						serverSocket.close();
-						s.close();
+						out.write(i);
 					}
-				} catch(IOException e)
-				{
-					e.printStackTrace();
-				}
+				} while(i != -1);
+				DataInputStream is = new DataInputStream(new ByteArrayInputStream(out.toByteArray()));
+				ClipHandlerRegistry.getHandlerFor(is.readUTF()).receiveClip(is, Toolkit.getDefaultToolkit().getSystemClipboard());
+				System.out.println("data received");
+				s.close();
 			}
+		} catch(IOException e)
+		{
+			e.printStackTrace();
 		}
+	}
+	
+	@Override
+	public void interrupt()
+	{
+		try
+		{
+			serverSocket.close();
+		} catch(IOException e)
+		{
+			e.printStackTrace();
+		}
+		super.interrupt();
 	}
 }

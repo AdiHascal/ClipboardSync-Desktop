@@ -14,7 +14,7 @@ public class TextHandler implements IClipHandler
 	@Override
 	public void sendClip(Socket s, Transferable clip) throws IOException, UnsupportedFlavorException
 	{
-		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(s.getOutputStream()));
+		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(s.getOutputStream(), 104857600));
 		out.writeUTF("text/plain");
 		out.writeUTF((String) clip.getTransferData(DataFlavor.stringFlavor));
 		out.flush();

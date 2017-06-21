@@ -22,7 +22,8 @@ import java.util.Map;
 public class Main implements ClipboardOwner
 {
 	public static final Main INSTANCE = new Main();
-	public final static String localFolderName = System.getProperty("user.home") + "/AppData/Local/ClipboardSync";
+	private static final String localFolderName = System.getProperty("user.home") + "/AppData/Local/ClipboardSync";
+	public static final File localFolder = new File(localFolderName);
 	private static int port;
 	private static SyncServer server = new SyncServer();
 	
@@ -31,7 +32,6 @@ public class Main implements ClipboardOwner
 		port = 63708;
 		try
 		{
-			File localFolder = new File(localFolderName);
 			if(!localFolder.exists())
 			{
 				if(!localFolder.mkdir())
@@ -98,6 +98,7 @@ public class Main implements ClipboardOwner
 	protected void finalize() throws Throwable
 	{
 		server.shouldRun = false;
+		server.interrupt();
 		super.finalize();
 	}
 }

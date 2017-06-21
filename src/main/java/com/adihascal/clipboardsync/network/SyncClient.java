@@ -3,6 +3,7 @@ package com.adihascal.clipboardsync.network;
 import com.adihascal.clipboardsync.Main;
 import com.adihascal.clipboardsync.handler.ClipHandlerRegistry;
 
+import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.IOException;
@@ -23,13 +24,11 @@ public class SyncClient extends Thread
 		Socket s = null;
 		try
 		{
-			if(ClipHandlerRegistry.isMimeTypeSupported(this.object.getTransferDataFlavors()[0].getMimeType()))
+			DataFlavor flavor = ClipHandlerRegistry.getFlavorFrom(this.object.getTransferDataFlavors());
+			if(flavor != null)
 			{
-				s = new Socket("10.0.0.36", Main.getPort());
-				if(ClipHandlerRegistry.isMimeTypeSupported(this.object.getTransferDataFlavors()[0].getMimeType()))
-				{
-					ClipHandlerRegistry.getHandlerFor(this.object.getTransferDataFlavors()[0].getMimeType()).sendClip(s, this.object);
-				}
+				s = new Socket("10.0.0.30", Main.getPort());
+				ClipHandlerRegistry.getHandlerFor(flavor.getMimeType()).sendClip(s, this.object);
 			}
 		} catch(IOException | UnsupportedFlavorException e)
 		{
