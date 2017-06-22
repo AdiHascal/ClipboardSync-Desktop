@@ -11,6 +11,7 @@ import java.net.Socket;
 
 public class SyncClient extends Thread
 {
+	public static String phoneAddress;
 	private final Transferable object;
 	
 	public SyncClient(Transferable t)
@@ -27,8 +28,9 @@ public class SyncClient extends Thread
 			DataFlavor flavor = ClipHandlerRegistry.getFlavorFrom(this.object.getTransferDataFlavors());
 			if(flavor != null)
 			{
-				s = new Socket("10.0.0.30", Main.getPort());
+				s = new Socket(phoneAddress, Main.getPort());
 				ClipHandlerRegistry.getHandlerFor(flavor.getMimeType()).sendClip(s, this.object);
+				System.out.println("data sent");
 			}
 		} catch(IOException | UnsupportedFlavorException e)
 		{

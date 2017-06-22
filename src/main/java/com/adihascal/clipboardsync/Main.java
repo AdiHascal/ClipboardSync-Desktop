@@ -14,8 +14,10 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.ClipboardOwner;
 import java.awt.datatransfer.Transferable;
 import java.awt.image.BufferedImage;
-import java.io.File;
+import java.io.*;
 import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -27,7 +29,7 @@ public class Main implements ClipboardOwner
 	private static int port;
 	private static SyncServer server = new SyncServer();
 	
-	public static void main(String[] args)
+	public static void main(String[] args) throws IOException
 	{
 		port = 63708;
 		try
@@ -77,8 +79,34 @@ public class Main implements ClipboardOwner
 		Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
 		Transferable t = clip.getContents(INSTANCE);
 		clip.setContents(t, INSTANCE);
+		getPhoneAddress();
 		
 		server.start();
+	}
+	
+	private static void getPhoneAddress() throws IOException
+	{
+		ServerSocket serverSocket = new ServerSocket(port);
+		System.out.println("waiting for connection");
+		Socket s = serverSocket.accept();
+		InputStream socketIn = s.getInputStream();
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		
+		int i;
+		do
+		{
+			i = socketIn.read();
+			if(i != -1)
+			{
+				out.write(i);
+			}
+		} while(i != -1);
+		
+		DataInputStream dis = new DataInputStream(new ByteArrayInputStream(out.toByteArray()));
+		SyncClient.phoneAddress = dis.readUTF();
+		System.out.println("connection received from address " + SyncClient.phoneAddress);
+		s.close();
+		serverSocket.close();
 	}
 	
 	public static int getPort()
