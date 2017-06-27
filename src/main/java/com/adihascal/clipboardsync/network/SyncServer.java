@@ -27,17 +27,14 @@ public class SyncServer extends Thread
 				System.out.println("starting server");
 				Socket s = serverSocket.accept();
 				DataInputStream socketIn = new DataInputStream(s.getInputStream());
-				ByteArrayOutputStream out = new ByteArrayOutputStream();
-				int i;
-				do
+				ByteArrayOutputStream baos = new ByteArrayOutputStream(104857600);
+				int count;
+				byte[] buffer = new byte[s.getReceiveBufferSize()];
+				while((count = socketIn.read(buffer)) > 0)
 				{
-					i = socketIn.read();
-					if(i != -1)
-					{
-						out.write(i);
-					}
-				} while(i != -1);
-				DataInputStream is = new DataInputStream(new ByteArrayInputStream(out.toByteArray()));
+					baos.write(buffer, 0, count);
+				}
+				DataInputStream is = new DataInputStream(new ByteArrayInputStream(baos.toByteArray()));
 				ClipHandlerRegistry.getHandlerFor(is.readUTF()).receiveClip(is, Toolkit.getDefaultToolkit().getSystemClipboard());
 				System.out.println("data received");
 				s.close();

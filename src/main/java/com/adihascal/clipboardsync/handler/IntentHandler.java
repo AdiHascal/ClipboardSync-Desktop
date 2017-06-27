@@ -15,14 +15,14 @@ import java.util.List;
 
 public class IntentHandler implements IClipHandler
 {
+	
 	@Override
 	public void sendClip(Socket s, Transferable clip) throws IOException, UnsupportedFlavorException
 	{
-		List<File> files = (List<File>) clip.getTransferData(DataFlavor.javaFileListFlavor);
-		
-		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(s.getOutputStream(), 104857600));
+		List<File> files = (List) clip.getTransferData(DataFlavor.javaFileListFlavor);
+		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(s.getOutputStream()));
 		out.writeUTF("application/x-java-serialized-object");
-		out.write(files.size());
+		out.writeInt(files.size());
 		
 		for(File f : files)
 		{
@@ -30,10 +30,13 @@ public class IntentHandler implements IClipHandler
 			out.writeUTF(f.getName());
 			out.writeLong(f.length());
 			byte[] data = IOUtils.readFully(in, -1, true);
+			
 			out.write(data);
-			out.flush();
 			in.close();
 		}
+		
+		out.flush();
+		Main.isBusy = false;
 	}
 	
 	@Override
@@ -41,7 +44,7 @@ public class IntentHandler implements IClipHandler
 	{
 		new Thread(new FileDeleter(Main.localFolder)).start();
 		
-		int nFiles = s.read();
+		int nFiles = s.readInt();
 		File[] toTransfer = new File[nFiles];
 		byte[] buf;
 		

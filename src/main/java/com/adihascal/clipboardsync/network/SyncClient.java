@@ -22,31 +22,19 @@ public class SyncClient extends Thread
 	@Override
 	public void run()
 	{
-		Socket s = null;
 		try
 		{
 			DataFlavor flavor = ClipHandlerRegistry.getFlavorFrom(this.object.getTransferDataFlavors());
 			if(flavor != null)
 			{
-				s = new Socket(phoneAddress, Main.getPort());
+				Socket s = new Socket(phoneAddress, Main.getPort());
 				ClipHandlerRegistry.getHandlerFor(flavor.getMimeType()).sendClip(s, this.object);
+				s.close();
 				System.out.println("data sent");
 			}
 		} catch(IOException | UnsupportedFlavorException e)
 		{
 			e.printStackTrace();
-		} finally
-		{
-			try
-			{
-				if(s != null)
-				{
-					s.close();
-				}
-			} catch(IOException e)
-			{
-				e.printStackTrace();
-			}
 		}
 	}
 }

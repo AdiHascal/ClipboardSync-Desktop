@@ -26,6 +26,7 @@ public class Main implements ClipboardOwner
 	public static final Main INSTANCE = new Main();
 	private static final String localFolderName = System.getProperty("user.home") + "/AppData/Local/ClipboardSync";
 	public static final File localFolder = new File(localFolderName);
+	public static boolean isBusy = false;
 	private static int port;
 	private static SyncServer server = new SyncServer();
 	
@@ -117,9 +118,13 @@ public class Main implements ClipboardOwner
 	@Override
 	public void lostOwnership(Clipboard clipboard, Transferable contents)
 	{
-		Transferable content = clipboard.getContents(this);
-		new SyncClient(content).start();
-		clipboard.setContents(content, this);
+		if(!isBusy)
+		{
+			isBusy = true;
+			Transferable content = clipboard.getContents(this);
+			new SyncClient(content).start();
+			clipboard.setContents(content, this);
+		}
 	}
 	
 	@Override
