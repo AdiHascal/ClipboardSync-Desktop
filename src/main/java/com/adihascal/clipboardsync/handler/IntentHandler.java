@@ -1,9 +1,8 @@
 package com.adihascal.clipboardsync.handler;
 
 import com.adihascal.clipboardsync.Main;
-import com.adihascal.clipboardsync.thread.FileDeleter;
 import com.adihascal.clipboardsync.transferable.FileListTransferable;
-import sun.misc.IOUtils;
+import com.adihascal.clipboardsync.util.Utilities;
 
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
@@ -29,9 +28,7 @@ public class IntentHandler implements IClipHandler
 			FileInputStream in = new FileInputStream(f);
 			out.writeUTF(f.getName());
 			out.writeLong(f.length());
-			byte[] data = IOUtils.readFully(in, -1, true);
-			
-			out.write(data);
+			Utilities.copyStream(in, out);
 			in.close();
 		}
 		
@@ -42,11 +39,14 @@ public class IntentHandler implements IClipHandler
 	@Override
 	public void receiveClip(DataInputStream s, Clipboard manager) throws IOException
 	{
-		new Thread(new FileDeleter(Main.localFolder)).start();
+		for(File f : Main.localFolder.listFiles())
+		{
+			f.delete();
+		}
 		
 		int nFiles = s.readInt();
 		File[] toTransfer = new File[nFiles];
-		byte[] buf;
+		long len;
 		
 		for(int i = 0; i < nFiles; i++)
 		{
@@ -54,9 +54,8 @@ public class IntentHandler implements IClipHandler
 			if(f.createNewFile())
 			{
 				FileOutputStream out = new FileOutputStream(f);
-				buf = new byte[Math.toIntExact(s.readLong())];
-				s.read(buf);
-				out.write(buf);
+				len = s.readLong();
+				Utilities.copyStream(s, out, (int) len);
 				out.close();
 			}
 			toTransfer[i] = f;

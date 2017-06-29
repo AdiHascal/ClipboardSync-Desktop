@@ -4,8 +4,6 @@ import com.adihascal.clipboardsync.Main;
 import com.adihascal.clipboardsync.handler.ClipHandlerRegistry;
 
 import java.awt.*;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -27,15 +25,8 @@ public class SyncServer extends Thread
 				System.out.println("starting server");
 				Socket s = serverSocket.accept();
 				DataInputStream socketIn = new DataInputStream(s.getInputStream());
-				ByteArrayOutputStream baos = new ByteArrayOutputStream(104857600);
-				int count;
-				byte[] buffer = new byte[s.getReceiveBufferSize()];
-				while((count = socketIn.read(buffer)) > 0)
-				{
-					baos.write(buffer, 0, count);
-				}
-				DataInputStream is = new DataInputStream(new ByteArrayInputStream(baos.toByteArray()));
-				ClipHandlerRegistry.getHandlerFor(is.readUTF()).receiveClip(is, Toolkit.getDefaultToolkit().getSystemClipboard());
+				ClipHandlerRegistry.getHandlerFor(socketIn.readUTF())
+						.receiveClip(socketIn, Toolkit.getDefaultToolkit().getSystemClipboard());
 				System.out.println("data received");
 				s.close();
 			}

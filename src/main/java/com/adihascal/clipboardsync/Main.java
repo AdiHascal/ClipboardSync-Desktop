@@ -42,7 +42,7 @@ public class Main implements ClipboardOwner
 					throw new Exception("failed to create temporary folder");
 				}
 			}
-			File imageFile = new File("C:/Users/Daniel/Desktop/image.png");
+			File imageFile = new File(System.getProperty("user.home") + "/Desktop/image.png");
 			Map<EncodeHintType, Object> hintMap = new EnumMap<>(EncodeHintType.class);
 			hintMap.put(EncodeHintType.CHARACTER_SET, "UTF-8");
 			
@@ -120,10 +120,18 @@ public class Main implements ClipboardOwner
 	{
 		if(!isBusy)
 		{
-			isBusy = true;
-			Transferable content = clipboard.getContents(this);
-			new SyncClient(content).start();
-			clipboard.setContents(content, this);
+			try
+			{
+				isBusy = true;
+				Thread.sleep(20);
+				Transferable content = clipboard.getContents(this);
+				new SyncClient(content).start();
+				clipboard.setContents(content, this);
+			}
+			catch(Exception e)
+			{
+				e.printStackTrace();
+			}
 		}
 	}
 	
