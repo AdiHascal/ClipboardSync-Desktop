@@ -7,6 +7,11 @@ sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
+    maven
+    {
+        name = "hook"
+        url = "https://raw.github.com/kristian/system-hook/mvn-repo/"
+    }
 }
 
 task fatJar(type: Jar) {
@@ -22,4 +27,5 @@ task fatJar(type: Jar) {
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     compile "com.google.zxing:core:3.2.1"
+    compile group: "lc.kra.system", name:"system-hook", version: "3.1"
 }

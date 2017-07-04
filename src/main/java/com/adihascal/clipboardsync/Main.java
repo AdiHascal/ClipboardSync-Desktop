@@ -7,6 +7,9 @@ import com.google.zxing.EncodeHintType;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+import lc.kra.system.keyboard.GlobalKeyboardHook;
+import lc.kra.system.keyboard.event.GlobalKeyAdapter;
+import lc.kra.system.keyboard.event.GlobalKeyEvent;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -21,6 +24,8 @@ import java.net.Socket;
 import java.util.EnumMap;
 import java.util.Map;
 
+import static lc.kra.system.keyboard.event.GlobalKeyEvent.*;
+
 public class Main implements ClipboardOwner
 {
 	public static final Main INSTANCE = new Main();
@@ -29,6 +34,8 @@ public class Main implements ClipboardOwner
 	public static boolean isBusy = false;
 	private static int port;
 	private static SyncServer server = new SyncServer();
+	private static Transferable prev;
+	private static GlobalKeyboardHook hook = new GlobalKeyboardHook(true);
 	
 	public static void main(String[] args) throws IOException
 	{
@@ -81,8 +88,19 @@ public class Main implements ClipboardOwner
 		Transferable t = clip.getContents(INSTANCE);
 		clip.setContents(t, INSTANCE);
 		getPhoneAddress();
-		
 		server.start();
+		
+		hook.addKeyListener(new GlobalKeyAdapter()
+		{
+			@Override
+			public void keyPressed(GlobalKeyEvent e)
+			{
+				if(e.toString().equals("192 [down,shift,control]"))
+				{
+					Main.pastePrevAndSwap();
+				}
+			}
+		});
 	}
 	
 	private static void getPhoneAddress() throws IOException
@@ -110,6 +128,39 @@ public class Main implements ClipboardOwner
 		serverSocket.close();
 	}
 	
+	private static void pastePrevAndSwap()
+	{
+		if(prev != null)
+		{
+			Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
+			Transferable toPut = prev;
+			prev = clip.getContents(INSTANCE);
+			clip.setContents(toPut, INSTANCE);
+			
+			Robot robot = null;
+			try
+			{
+				robot = new Robot();
+			}
+			catch(AWTException e)
+			{
+				e.printStackTrace();
+			}
+			
+			if(robot != null)
+			{
+				robot.setAutoDelay(20);
+				robot.keyRelease(VK_CONTROL);
+				robot.keyRelease(VK_SHIFT);
+				robot.keyRelease(VK_OEM_3);
+				robot.keyPress(VK_CONTROL);
+				robot.keyPress(VK_V);
+				robot.keyRelease(VK_CONTROL);
+				robot.keyRelease(VK_V);
+			}
+		}
+	}
+	
 	public static int getPort()
 	{
 		return port;
@@ -125,6 +176,7 @@ public class Main implements ClipboardOwner
 				isBusy = true;
 				Thread.sleep(20);
 				Transferable content = clipboard.getContents(this);
+				prev = content;
 				new SyncClient(content).start();
 				clipboard.setContents(content, this);
 			}
@@ -139,6 +191,7 @@ public class Main implements ClipboardOwner
 	protected void finalize() throws Throwable
 	{
 		server.shouldRun = false;
+		hook.shutdownHook();
 		server.interrupt();
 		super.finalize();
 	}
