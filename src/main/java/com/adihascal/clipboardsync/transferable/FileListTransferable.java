@@ -5,13 +5,13 @@ import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
 
 public class FileListTransferable implements Transferable
 {
-	private File[] data;
+	private ArrayList<File> data;
 	
-	public FileListTransferable(File[] files)
+	public FileListTransferable(ArrayList<File> files)
 	{
 		this.data = files;
 	}
@@ -36,7 +36,7 @@ public class FileListTransferable implements Transferable
 			throw new UnsupportedFlavorException(flavor);
 		} else
 		{
-			return Arrays.asList(this.data);
+			return this.data;
 		}
 	}
 }

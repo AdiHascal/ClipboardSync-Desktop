@@ -34,7 +34,7 @@ public class SyncClient extends Thread
 			}
 		} catch(IOException | UnsupportedFlavorException e)
 		{
-			e.printStackTrace();
+			System.out.println("unable to connect");
 		}
 	}
 }

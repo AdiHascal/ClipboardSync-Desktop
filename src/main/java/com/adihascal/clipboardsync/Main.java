@@ -17,7 +17,9 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.ClipboardOwner;
 import java.awt.datatransfer.Transferable;
 import java.awt.image.BufferedImage;
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -95,7 +97,7 @@ public class Main implements ClipboardOwner
 			@Override
 			public void keyPressed(GlobalKeyEvent e)
 			{
-				if(e.toString().equals("192 [down,shift,control]"))
+				if(e.toString().equals("86 [down,menu,control]"))
 				{
 					Main.pastePrevAndSwap();
 				}
@@ -108,21 +110,8 @@ public class Main implements ClipboardOwner
 		ServerSocket serverSocket = new ServerSocket(port);
 		System.out.println("waiting for connection");
 		Socket s = serverSocket.accept();
-		InputStream socketIn = s.getInputStream();
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		
-		int i;
-		do
-		{
-			i = socketIn.read();
-			if(i != -1)
-			{
-				out.write(i);
-			}
-		} while(i != -1);
-		
-		DataInputStream dis = new DataInputStream(new ByteArrayInputStream(out.toByteArray()));
-		SyncClient.phoneAddress = dis.readUTF();
+		DataInputStream in = new DataInputStream(s.getInputStream());
+		SyncClient.phoneAddress = in.readUTF();
 		System.out.println("connection received from address " + SyncClient.phoneAddress);
 		s.close();
 		serverSocket.close();
@@ -151,8 +140,8 @@ public class Main implements ClipboardOwner
 			{
 				robot.setAutoDelay(20);
 				robot.keyRelease(VK_CONTROL);
-				robot.keyRelease(VK_SHIFT);
-				robot.keyRelease(VK_OEM_3);
+				robot.keyRelease(VK_MENU);
+				robot.keyRelease(VK_V);
 				robot.keyPress(VK_CONTROL);
 				robot.keyPress(VK_V);
 				robot.keyRelease(VK_CONTROL);

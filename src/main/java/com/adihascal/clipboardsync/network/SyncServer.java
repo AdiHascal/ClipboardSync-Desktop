@@ -25,9 +25,18 @@ public class SyncServer extends Thread
 				System.out.println("starting server");
 				Socket s = serverSocket.accept();
 				DataInputStream socketIn = new DataInputStream(s.getInputStream());
-				ClipHandlerRegistry.getHandlerFor(socketIn.readUTF())
-						.receiveClip(socketIn, Toolkit.getDefaultToolkit().getSystemClipboard());
-				System.out.println("data received");
+				String command = socketIn.readUTF();
+				if(command.equals("receive"))
+				{
+					ClipHandlerRegistry.getHandlerFor(socketIn.readUTF())
+							.receiveClip(socketIn, Toolkit.getDefaultToolkit().getSystemClipboard());
+					System.out.println("data received");
+				}
+				else if(command.equals("reconnect"))
+				{
+					SyncClient.phoneAddress = socketIn.readUTF();
+					System.out.println(SyncClient.phoneAddress + " reconnected");
+				}
 				s.close();
 			}
 		} catch(IOException e)
