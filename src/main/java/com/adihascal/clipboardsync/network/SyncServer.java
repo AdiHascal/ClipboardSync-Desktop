@@ -24,7 +24,6 @@ public class SyncServer extends Thread
 			{
 				System.out.println("starting server");
 				Socket s = serverSocket.accept();
-				s.setReceiveBufferSize(1048576);
 				DataInputStream socketIn = new DataInputStream(s.getInputStream());
 				String command = socketIn.readUTF();
 				if(command.equals("receive"))
