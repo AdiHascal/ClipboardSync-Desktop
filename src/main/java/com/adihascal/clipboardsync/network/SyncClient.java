@@ -28,7 +28,6 @@ public class SyncClient extends Thread
 			if(flavor != null)
 			{
 				Socket s = new Socket(phoneAddress, Main.getPort());
-				s.setReceiveBufferSize(1048576);
 				ClipHandlerRegistry.getHandlerFor(flavor.getMimeType()).sendClip(s, this.object);
 				s.close();
 				System.out.println("data sent");
