@@ -6,35 +6,68 @@ import com.adihascal.clipboardsync.handler.ClipHandlerRegistry;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
 public class SyncClient extends Thread
 {
-	public static String phoneAddress;
+	static volatile String phoneAddress;
 	private final Transferable object;
+	private final String command;
 	
-	public SyncClient(Transferable t)
+	public SyncClient(String comm, Transferable trans)
 	{
-		this.object = t;
+		this.object = trans;
+		this.command = comm;
 	}
 	
 	@Override
 	public void run()
 	{
-		try
+		if(phoneAddress != null)
 		{
-			DataFlavor flavor = ClipHandlerRegistry.getFlavorFrom(this.object.getTransferDataFlavors());
-			if(flavor != null)
+			Socket s = null;
+			try
 			{
-				Socket s = new Socket(phoneAddress, Main.getPort());
-				ClipHandlerRegistry.getHandlerFor(flavor.getMimeType()).sendClip(s, this.object);
-				s.close();
-				System.out.println("data sent");
+				s = new Socket(phoneAddress, Main.getPort());
+				DataOutputStream out = new DataOutputStream(s.getOutputStream());
+				switch(this.command)
+				{
+					case "send":
+						out.writeUTF("receive");
+						DataFlavor flavor = ClipHandlerRegistry
+								.getSuitableFlavor(this.object.getTransferDataFlavors());
+						if(flavor != null)
+						{
+							ClipHandlerRegistry.getHandlerFor(flavor.getMimeType()).sendClip(out, this.object);
+							System.out.println("data sent");
+						}
+						break;
+					case "disconnect":
+						out.writeUTF(this.command);
+						System.out.println("disconnected from " + phoneAddress);
+						phoneAddress = null;
+						break;
+				}
 			}
-		} catch(IOException | UnsupportedFlavorException e)
-		{
-			System.out.println("unable to connect");
+			catch(IOException | UnsupportedFlavorException e)
+			{
+				System.out.println("unable to connect");
+				e.printStackTrace();
+			}
+			finally
+			{
+				try
+				{
+					assert s != null;
+					s.close();
+				}
+				catch(IOException e)
+				{
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 }

@@ -17,12 +17,9 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.ClipboardOwner;
 import java.awt.datatransfer.Transferable;
 import java.awt.image.BufferedImage;
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -89,9 +86,7 @@ public class Main implements ClipboardOwner
 		Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
 		Transferable t = clip.getContents(INSTANCE);
 		clip.setContents(t, INSTANCE);
-		getPhoneAddress();
 		server.start();
-		
 		hook.addKeyListener(new GlobalKeyAdapter()
 		{
 			@Override
@@ -103,18 +98,6 @@ public class Main implements ClipboardOwner
 				}
 			}
 		});
-	}
-	
-	private static void getPhoneAddress() throws IOException
-	{
-		ServerSocket serverSocket = new ServerSocket(port);
-		System.out.println("waiting for connection");
-		Socket s = serverSocket.accept();
-		DataInputStream in = new DataInputStream(s.getInputStream());
-		SyncClient.phoneAddress = in.readUTF();
-		System.out.println("connection received from address " + SyncClient.phoneAddress);
-		s.close();
-		serverSocket.close();
 	}
 	
 	private static void pastePrevAndSwap()
@@ -166,7 +149,7 @@ public class Main implements ClipboardOwner
 				Thread.sleep(20);
 				Transferable content = clipboard.getContents(this);
 				prev = content;
-				new SyncClient(content).start();
+				new SyncClient("send", content).start();
 				clipboard.setContents(content, this);
 			}
 			catch(Exception e)
@@ -179,7 +162,7 @@ public class Main implements ClipboardOwner
 	@Override
 	protected void finalize() throws Throwable
 	{
-		server.shouldRun = false;
+		new SyncClient("disconnect", null).start();
 		hook.shutdownHook();
 		server.interrupt();
 		super.finalize();

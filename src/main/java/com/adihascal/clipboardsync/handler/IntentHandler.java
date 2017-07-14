@@ -9,7 +9,6 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.*;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,10 +16,9 @@ public class IntentHandler implements IClipHandler
 {
 	
 	@Override
-	public void sendClip(Socket s, Transferable clip) throws IOException, UnsupportedFlavorException
+	public void sendClip(DataOutputStream out, Transferable clip) throws IOException, UnsupportedFlavorException
 	{
 		List<File> files = (List) clip.getTransferData(DataFlavor.javaFileListFlavor);
-		DataOutputStream out = new DataOutputStream(new BufferedOutputStream(s.getOutputStream()));
 		out.writeUTF("application/x-java-serialized-object");
 		out.writeInt(files.size());
 		
@@ -92,6 +90,7 @@ public class IntentHandler implements IClipHandler
 			f.createNewFile();
 			FileOutputStream out = new FileOutputStream(f);
 			Utilities.copyStream(in, out, (int) in.readLong());
+			out.close();
 			if(parent != null)
 			{
 				toTransfer.add(f);

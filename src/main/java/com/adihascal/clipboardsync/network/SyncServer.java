@@ -11,7 +11,6 @@ import java.net.Socket;
 
 public class SyncServer extends Thread
 {
-	public volatile boolean shouldRun = true;
 	private ServerSocket serverSocket;
 	
 	@Override
@@ -20,22 +19,27 @@ public class SyncServer extends Thread
 		try
 		{
 			serverSocket = new ServerSocket(Main.getPort());
-			while(this.shouldRun)
+			while(true)
 			{
 				System.out.println("starting server");
 				Socket s = serverSocket.accept();
 				DataInputStream socketIn = new DataInputStream(s.getInputStream());
 				String command = socketIn.readUTF();
-				if(command.equals("receive"))
+				switch(command)
 				{
-					ClipHandlerRegistry.getHandlerFor(socketIn.readUTF())
-							.receiveClip(socketIn, Toolkit.getDefaultToolkit().getSystemClipboard());
-					System.out.println("data received");
-				}
-				else if(command.equals("reconnect"))
-				{
-					SyncClient.phoneAddress = socketIn.readUTF();
-					System.out.println(SyncClient.phoneAddress + " reconnected");
+					case "receive":
+						ClipHandlerRegistry.getHandlerFor(socketIn.readUTF())
+								.receiveClip(socketIn, Toolkit.getDefaultToolkit().getSystemClipboard());
+						System.out.println("data received");
+						break;
+					case "connect":
+						SyncClient.phoneAddress = socketIn.readUTF();
+						System.out.println(SyncClient.phoneAddress + " connected");
+						break;
+					case "disconnect":
+						System.out.println(SyncClient.phoneAddress + " disconnected");
+						SyncClient.phoneAddress = null;
+						break;
 				}
 				s.close();
 			}

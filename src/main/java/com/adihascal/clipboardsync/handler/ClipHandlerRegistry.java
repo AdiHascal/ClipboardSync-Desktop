@@ -25,7 +25,7 @@ public class ClipHandlerRegistry
 		return handlers.get(type);
 	}
 	
-	public static DataFlavor getFlavorFrom(DataFlavor[] types)
+	public static DataFlavor getSuitableFlavor(DataFlavor[] types)
 	{
 		for(DataFlavor df : types)
 		{
