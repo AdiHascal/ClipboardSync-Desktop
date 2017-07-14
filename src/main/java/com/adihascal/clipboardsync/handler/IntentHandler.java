@@ -90,7 +90,6 @@ public class IntentHandler implements IClipHandler
 			f.createNewFile();
 			FileOutputStream out = new FileOutputStream(f);
 			Utilities.copyStream(in, out, (int) in.readLong());
-			out.close();
 			if(parent != null)
 			{
 				toTransfer.add(f);
