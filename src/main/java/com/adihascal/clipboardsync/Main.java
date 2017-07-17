@@ -30,7 +30,7 @@ public class Main implements ClipboardOwner
 	public static final Main INSTANCE = new Main();
 	private static final String localFolderName = System.getProperty("user.home") + "/AppData/Local/ClipboardSync";
 	public static final File localFolder = new File(localFolderName);
-	public static boolean isBusy = false;
+	public static volatile boolean isBusy = false;
 	private static int port;
 	private static SyncServer server = new SyncServer();
 	private static Transferable prev;

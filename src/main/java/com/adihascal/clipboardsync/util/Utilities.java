@@ -6,7 +6,14 @@ public class Utilities
 {
 	public static final int BUFFER_SIZE = 1048576;
 	
-	public static void copyStreamToFile(InputStream input, File f) throws IOException
+	/**
+	 * overload of {@link #copyStream(InputStream, OutputStream)} that removes the need to create a {@link FileOutputStream}
+	 *
+	 * @param input the origin stream
+	 * @param f     the destination file
+	 * @throws IOException if something explodes
+	 */
+	public static void copyStream(InputStream input, File f) throws IOException
 	{
 		if(!f.exists())
 		{
@@ -15,6 +22,12 @@ public class Utilities
 		copyStream(input, new FileOutputStream(f));
 	}
 	
+	/**
+	 * copies all the data present in <code>input</code> to <code>output</code>
+	 * @param input the origin stream
+	 * @param output the destination stream
+	 * @throws IOException if something explodes
+	 */
 	public static void copyStream(InputStream input, OutputStream output) throws IOException
 	{
 		byte[] buffer = new byte[BUFFER_SIZE];
@@ -23,9 +36,15 @@ public class Utilities
 		{
 			output.write(buffer, 0, bytesRead);
 		}
-		output.close();
 	}
 	
+	/**
+	 * copies <code>length</code> bytes from <code>input</code> to <code>output</code>
+	 * @param input the origin stream
+	 * @param output the destination stream
+	 * @param length number of bytes to copy
+	 * @throws IOException if something explodes
+	 */
 	public static void copyStream(InputStream input, OutputStream output, int length) throws IOException
 	{
 		byte[] buffer = new byte[BUFFER_SIZE];

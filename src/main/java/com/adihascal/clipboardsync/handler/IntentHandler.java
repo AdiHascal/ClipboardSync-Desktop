@@ -9,6 +9,7 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,6 +21,7 @@ public class IntentHandler implements IClipHandler
 	{
 		List<File> files = (List) clip.getTransferData(DataFlavor.javaFileListFlavor);
 		out.writeUTF("application/x-java-serialized-object");
+		out.writeLong(getPayloadSize(files.toArray(new File[0])));
 		out.writeInt(files.size());
 		
 		for(File f : files)
@@ -34,9 +36,24 @@ public class IntentHandler implements IClipHandler
 	@Override
 	public void receiveClip(DataInputStream s, Clipboard manager) throws IOException
 	{
-		for(File f : Main.localFolder.listFiles())
+		final File[] existing = Main.localFolder.listFiles();
+		
+		if(existing != null)
 		{
-			f.delete();
+			new Thread(() ->
+			{
+				for(File f : existing)
+				{
+					try
+					{
+						deleteFile(f);
+					}
+					catch(IOException e)
+					{
+						e.printStackTrace();
+					}
+				}
+			}).start();
 		}
 		
 		int nFiles = s.readInt();
@@ -90,7 +107,7 @@ public class IntentHandler implements IClipHandler
 			f.createNewFile();
 			FileOutputStream out = new FileOutputStream(f);
 			Utilities.copyStream(in, out, (int) in.readLong());
-			if(parent != null)
+			if(parent == null)
 			{
 				toTransfer.add(f);
 			}
@@ -109,7 +126,54 @@ public class IntentHandler implements IClipHandler
 			{
 				receiveFile(in, toTransfer, f.getPath());
 			}
-			toTransfer.add(f);
+			if(parent == null)
+			{
+				toTransfer.add(f);
+			}
+		}
+	}
+	
+	private long getPayloadSize(File... files)
+	{
+		long size = 0L;
+		
+		for(File f : files)
+		{
+			if(!f.isDirectory())
+			{
+				size += f.length();
+			}
+			else
+			{
+				for(File sub : f.listFiles())
+				{
+					size += getPayloadSize(sub);
+				}
+			}
+		}
+		
+		return size;
+	}
+	
+	private void deleteFile(File f) throws IOException
+	{
+		if(!f.isDirectory())
+		{
+			Files.delete(f.toPath());
+		}
+		else
+		{
+			Files.list(f.toPath()).forEach(sub ->
+			{
+				try
+				{
+					deleteFile(sub.toFile());
+				}
+				catch(IOException e)
+				{
+					e.printStackTrace();
+				}
+			});
 		}
 	}
 }
