@@ -30,6 +30,9 @@ class SocketHolder
 	
 	static void terminate() throws IOException
 	{
-		socket.close();
+		if(socket != null)
+		{
+			socket.close();
+		}
 	}
 }
