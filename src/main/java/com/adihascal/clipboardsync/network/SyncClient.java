@@ -1,14 +1,11 @@
 package com.adihascal.clipboardsync.network;
 
 import com.adihascal.clipboardsync.Main;
-import com.adihascal.clipboardsync.handler.ClipHandlerRegistry;
 
-import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.UnsupportedFlavorException;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.Socket;
+
+import static com.adihascal.clipboardsync.network.SocketHolder.getOutputStream;
 
 public class SyncClient extends Thread
 {
@@ -27,46 +24,26 @@ public class SyncClient extends Thread
 	{
 		if(phoneAddress != null)
 		{
-			Socket s = null;
 			try
 			{
-				s = new Socket(phoneAddress, Main.getPort());
-				DataOutputStream out = new DataOutputStream(s.getOutputStream());
 				switch(this.command)
 				{
-					case "send":
-						out.writeUTF("receive");
-						DataFlavor flavor = ClipHandlerRegistry
-								.getSuitableFlavor(this.object.getTransferDataFlavors());
-						if(flavor != null)
-						{
-							ClipHandlerRegistry.getHandlerFor(flavor.getMimeType()).sendClip(out, this.object);
-							System.out.println("data sent");
-						}
-						break;
 					case "disconnect":
-						out.writeUTF(this.command);
+						getOutputStream().writeUTF(this.command);
 						System.out.println("disconnected from " + phoneAddress);
 						phoneAddress = null;
 						break;
+					case "announce":
+						Main.getServer().setTransferable(this.object);
+						getOutputStream().writeUTF("announce");
+						System.out.println("remote aware of pending local data");
+						break;
 				}
 			}
-			catch(IOException | UnsupportedFlavorException e)
+			catch(IOException e)
 			{
 				System.out.println("unable to connect");
 				e.printStackTrace();
-			}
-			finally
-			{
-				try
-				{
-					assert s != null;
-					s.close();
-				}
-				catch(IOException e)
-				{
-					e.printStackTrace();
-				}
 			}
 		}
 	}

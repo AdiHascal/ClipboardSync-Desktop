@@ -49,27 +49,26 @@ public class Main implements ClipboardOwner
 				}
 			}
 			File imageFile = new File(System.getProperty("user.home") + "/Desktop/image.png");
+			
 			Map<EncodeHintType, Object> hintMap = new EnumMap<>(EncodeHintType.class);
 			hintMap.put(EncodeHintType.CHARACTER_SET, "UTF-8");
-			
 			hintMap.put(EncodeHintType.MARGIN, 1);
 			hintMap.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.L);
 			
-			QRCodeWriter qrCodeWriter = new QRCodeWriter();
-			BitMatrix bitMatrix = qrCodeWriter.encode(InetAddress.getLocalHost().getHostName() + "," + InetAddress.getLocalHost().getHostAddress(), BarcodeFormat.QR_CODE, 250, 250, hintMap);
-			BufferedImage image = new BufferedImage(bitMatrix.getWidth(), bitMatrix.getHeight(), BufferedImage.TYPE_INT_RGB);
-			image.createGraphics();
-			
+			BitMatrix matrix = new QRCodeWriter()
+					.encode(InetAddress.getLocalHost().getHostName() + "," + InetAddress.getLocalHost()
+							.getHostAddress(), BarcodeFormat.QR_CODE, 250, 250, hintMap);
+			BufferedImage image = new BufferedImage(matrix.getWidth(), matrix.getHeight(), BufferedImage.TYPE_INT_RGB);
 			Graphics2D graphics = (Graphics2D) image.getGraphics();
 			graphics.setColor(Color.WHITE);
-			graphics.fillRect(0, 0, bitMatrix.getWidth(), bitMatrix.getHeight());
+			graphics.fillRect(0, 0, matrix.getWidth(), matrix.getHeight());
 			graphics.setColor(Color.BLACK);
 			
-			for(int i = 0; i < bitMatrix.getWidth(); i++)
+			for(int i = 0; i < matrix.getWidth(); i++)
 			{
-				for(int j = 0; j < bitMatrix.getWidth(); j++)
+				for(int j = 0; j < matrix.getWidth(); j++)
 				{
-					if(bitMatrix.get(i, j))
+					if(matrix.get(i, j))
 					{
 						graphics.fillRect(i, j, 1, 1);
 					}
@@ -138,6 +137,11 @@ public class Main implements ClipboardOwner
 		return port;
 	}
 	
+	public static SyncServer getServer()
+	{
+		return server;
+	}
+	
 	@Override
 	public void lostOwnership(Clipboard clipboard, Transferable contents)
 	{
@@ -149,8 +153,8 @@ public class Main implements ClipboardOwner
 				Thread.sleep(20);
 				Transferable content = clipboard.getContents(this);
 				prev = content;
-				new SyncClient("send", content).start();
-				clipboard.setContents(content, this);
+				new SyncClient("announce", content).start();
+				clipboard.setContents(content, Main.INSTANCE);
 			}
 			catch(Exception e)
 			{

@@ -9,7 +9,11 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.*;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,7 +23,7 @@ public class IntentHandler implements IClipHandler
 	@Override
 	public void sendClip(DataOutputStream out, Transferable clip) throws IOException, UnsupportedFlavorException
 	{
-		List<File> files = (List) clip.getTransferData(DataFlavor.javaFileListFlavor);
+		List<File> files = (List<File>) clip.getTransferData(DataFlavor.javaFileListFlavor);
 		out.writeUTF("application/x-java-serialized-object");
 		out.writeLong(getPayloadSize(files.toArray(new File[0])));
 		out.writeInt(files.size());
@@ -28,9 +32,6 @@ public class IntentHandler implements IClipHandler
 		{
 			sendFile(out, f);
 		}
-		
-		out.flush();
-		Main.isBusy = false;
 	}
 	
 	@Override
@@ -40,20 +41,17 @@ public class IntentHandler implements IClipHandler
 		
 		if(existing != null)
 		{
-			new Thread(() ->
+			for(File f : existing)
 			{
-				for(File f : existing)
+				try
 				{
-					try
-					{
-						deleteFile(f);
-					}
-					catch(IOException e)
-					{
-						e.printStackTrace();
-					}
+					deleteFile(f.toPath());
 				}
-			}).start();
+				catch(IOException | InterruptedException e)
+				{
+					e.printStackTrace();
+				}
+			}
 		}
 		
 		int nFiles = s.readInt();
@@ -104,7 +102,7 @@ public class IntentHandler implements IClipHandler
 			}
 			path += "/" + in.readUTF();
 			f = new File(path);
-			f.createNewFile();
+			Files.createFile(f.toPath());
 			FileOutputStream out = new FileOutputStream(f);
 			Utilities.copyStream(in, out, (int) in.readLong());
 			if(parent == null)
@@ -120,7 +118,7 @@ public class IntentHandler implements IClipHandler
 			}
 			path += "/" + in.readUTF();
 			f = new File(path);
-			f.mkdir();
+			Files.createDirectory(f.toPath());
 			int nFiles = in.readInt();
 			for(int i = 0; i < nFiles; i++)
 			{
@@ -155,25 +153,23 @@ public class IntentHandler implements IClipHandler
 		return size;
 	}
 	
-	private void deleteFile(File f) throws IOException
+	private void deleteFile(Path f) throws IOException, InterruptedException
 	{
-		if(!f.isDirectory())
+		Files.walkFileTree(f, new SimpleFileVisitor<Path>()
 		{
-			Files.delete(f.toPath());
-		}
-		else
-		{
-			Files.list(f.toPath()).forEach(sub ->
+			@Override
+			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException
 			{
-				try
-				{
-					deleteFile(sub.toFile());
-				}
-				catch(IOException e)
-				{
-					e.printStackTrace();
-				}
-			});
-		}
+				Files.delete(file);
+				return FileVisitResult.CONTINUE;
+			}
+			
+			@Override
+			public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException
+			{
+				Files.delete(dir);
+				return FileVisitResult.CONTINUE;
+			}
+		});
 	}
 }

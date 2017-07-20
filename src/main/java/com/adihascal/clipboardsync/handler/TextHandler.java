@@ -15,7 +15,6 @@ public class TextHandler implements IClipHandler
 		out.writeUTF("text/plain");
 		out.writeUTF((String) clip.getTransferData(DataFlavor.stringFlavor));
 		out.flush();
-		Main.isBusy = false;
 	}
 	
 	@Override
