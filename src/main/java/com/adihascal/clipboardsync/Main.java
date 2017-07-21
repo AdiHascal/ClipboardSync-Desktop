@@ -145,21 +145,20 @@ public class Main implements ClipboardOwner
 	@Override
 	public void lostOwnership(Clipboard clipboard, Transferable contents)
 	{
-		if(!isBusy)
+		try
 		{
-			try
+			Thread.sleep(20);
+			Transferable content = clipboard.getContents(this);
+			clipboard.setContents(content, Main.INSTANCE);
+			if(!isBusy)
 			{
-				isBusy = true;
-				Thread.sleep(20);
-				Transferable content = clipboard.getContents(this);
 				prev = content;
 				new SyncClient("announce", content).start();
-				clipboard.setContents(content, Main.INSTANCE);
 			}
-			catch(Exception e)
-			{
-				e.printStackTrace();
-			}
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
 		}
 	}
 	

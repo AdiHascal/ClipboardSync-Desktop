@@ -60,6 +60,14 @@ public class SyncServer extends Thread
 					case "refuse":
 						System.out.println("remote refused local data");
 						break;
+					case "pause":
+						System.out.println("paused");
+						Main.isBusy = true;
+						break;
+					case "resume":
+						System.out.println("resumed");
+						Main.isBusy = false;
+						break;
 				}
 			}
 		}
