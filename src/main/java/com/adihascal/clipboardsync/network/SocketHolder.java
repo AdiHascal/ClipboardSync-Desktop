@@ -1,34 +1,50 @@
 package com.adihascal.clipboardsync.network;
 
+import com.adihascal.clipboardsync.Main;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.net.Socket;
 
-class SocketHolder
+public class SocketHolder
 {
-	private static Socket socket;
-	private static DataInputStream socketIn;
-	private static DataOutputStream socketOut;
+	private volatile static Socket socket;
+	private volatile static DataInputStream socketIn;
+	private volatile static DataOutputStream socketOut;
+	private volatile static ServerSocket serverSocket;
 	
-	static void setSocket(Socket socket) throws IOException
+	static
 	{
-		SocketHolder.socket = socket;
+		try
+		{
+			serverSocket = new ServerSocket(Main.getPort());
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
+	static void init() throws IOException
+	{
+		socket = serverSocket.accept();
 		socketIn = new DataInputStream(socket.getInputStream());
 		socketOut = new DataOutputStream(socket.getOutputStream());
 	}
 	
-	static DataInputStream getInputStream() throws IOException
+	public static DataInputStream in()
 	{
 		return socketIn;
 	}
 	
-	static DataOutputStream getOutputStream() throws IOException
+	public static DataOutputStream out()
 	{
 		return socketOut;
 	}
 	
-	static void terminate() throws IOException
+	static void invalidate() throws IOException
 	{
 		if(socket != null)
 		{

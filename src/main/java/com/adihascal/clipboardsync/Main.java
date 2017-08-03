@@ -59,7 +59,7 @@ public class Main implements ClipboardOwner
 					.encode(InetAddress.getLocalHost().getHostName() + "," + InetAddress.getLocalHost()
 							.getHostAddress(), BarcodeFormat.QR_CODE, 250, 250, hintMap);
 			BufferedImage image = new BufferedImage(matrix.getWidth(), matrix.getHeight(), BufferedImage.TYPE_INT_RGB);
-			Graphics2D graphics = (Graphics2D) image.getGraphics();
+			Graphics graphics = image.getGraphics();
 			graphics.setColor(Color.WHITE);
 			graphics.fillRect(0, 0, matrix.getWidth(), matrix.getHeight());
 			graphics.setColor(Color.BLACK);
@@ -140,6 +140,14 @@ public class Main implements ClipboardOwner
 	public static SyncServer getServer()
 	{
 		return server;
+	}
+	
+	public static void restart()
+	{
+		server.interrupt();
+		server = null;
+		server = new SyncServer();
+		server.start();
 	}
 	
 	@Override

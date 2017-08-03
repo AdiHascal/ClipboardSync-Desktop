@@ -8,13 +8,12 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.IOException;
-import java.net.ServerSocket;
 
-import static com.adihascal.clipboardsync.network.SocketHolder.*;
+import static com.adihascal.clipboardsync.network.SocketHolder.in;
+import static com.adihascal.clipboardsync.network.SocketHolder.out;
 
 public class SyncServer extends Thread
 {
-	private ServerSocket serverSocket;
 	private Transferable temp;
 	
 	@Override
@@ -22,37 +21,37 @@ public class SyncServer extends Thread
 	{
 		try
 		{
-			serverSocket = new ServerSocket(Main.getPort());
-			setSocket(serverSocket.accept());
+			SocketHolder.init();
+			
 			while(true)
 			{
 				System.out.println("starting server");
-				String command = getInputStream().readUTF();
+				String command = in().readUTF();
 				switch(command)
 				{
 					case "receive":
 						Main.isBusy = true;
-						ClipHandlerRegistry.getHandlerFor(getInputStream().readUTF())
-								.receiveClip(getInputStream(), Toolkit.getDefaultToolkit().getSystemClipboard());
+						ClipHandlerRegistry.getHandlerFor(in().readUTF())
+								.receiveClip(Toolkit.getDefaultToolkit().getSystemClipboard());
 						System.out.println("data received");
 						Main.isBusy = false;
 						break;
 					case "connect":
-						SyncClient.phoneAddress = getInputStream().readUTF();
+						SyncClient.phoneAddress = in().readUTF();
 						System.out.println(SyncClient.phoneAddress + " connected");
 						break;
 					case "disconnect":
 						System.out.println(SyncClient.phoneAddress + " disconnected");
 						SyncClient.phoneAddress = null;
-						break;
+						return;
 					case "accept":
 						DataFlavor flavor = ClipHandlerRegistry.getSuitableFlavor(this.temp.getTransferDataFlavors());
 						if(flavor != null)
 						{
 							Main.isBusy = true;
-							getOutputStream().writeUTF("receive");
+							out().writeUTF("receive");
 							ClipHandlerRegistry.getHandlerFor(flavor.getMimeType())
-									.sendClip(getOutputStream(), this.temp);
+									.sendClip(this.temp);
 							System.out.println("data sent");
 							Main.isBusy = false;
 						}
@@ -68,12 +67,16 @@ public class SyncServer extends Thread
 						System.out.println("resumed");
 						Main.isBusy = false;
 						break;
+					case "resume_transfer":
+						break;
 				}
 			}
 		}
 		catch(IOException | UnsupportedFlavorException e)
 		{
 			e.printStackTrace();
+			System.out.println("IO Error. Restarting server.");
+			Main.restart();
 		}
 	}
 	
@@ -82,8 +85,7 @@ public class SyncServer extends Thread
 	{
 		try
 		{
-			serverSocket.close();
-			terminate();
+			SocketHolder.invalidate();
 		} catch(IOException e)
 		{
 			e.printStackTrace();

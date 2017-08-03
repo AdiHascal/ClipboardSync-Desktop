@@ -13,6 +13,7 @@ public class ClipHandlerRegistry
 	{
 		handlers.put("text/plain", textHandler);
 		handlers.put("application/x-java-serialized-object", intentHandler);
+		handlers.put("fucking retards", intentHandler);
 		handlers.put(DataFlavor.stringFlavor.getMimeType(), textHandler);
 		handlers.put(DataFlavor.allHtmlFlavor.getMimeType(), textHandler);
 		handlers.put(DataFlavor.fragmentHtmlFlavor.getMimeType(), textHandler);

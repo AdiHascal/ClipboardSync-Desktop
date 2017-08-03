@@ -5,7 +5,7 @@ import com.adihascal.clipboardsync.Main;
 import java.awt.datatransfer.Transferable;
 import java.io.IOException;
 
-import static com.adihascal.clipboardsync.network.SocketHolder.getOutputStream;
+import static com.adihascal.clipboardsync.network.SocketHolder.out;
 
 public class SyncClient extends Thread
 {
@@ -29,13 +29,13 @@ public class SyncClient extends Thread
 				switch(this.command)
 				{
 					case "disconnect":
-						getOutputStream().writeUTF(this.command);
+						out().writeUTF(this.command);
 						System.out.println("disconnected from " + phoneAddress);
 						phoneAddress = null;
 						break;
 					case "announce":
 						Main.getServer().setTransferable(this.object);
-						getOutputStream().writeUTF("announce");
+						out().writeUTF("announce");
 						System.out.println("remote aware of pending local data");
 						break;
 				}
