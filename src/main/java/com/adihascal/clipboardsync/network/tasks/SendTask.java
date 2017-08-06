@@ -13,7 +13,7 @@ import static com.adihascal.clipboardsync.network.SocketHolder.out;
 public class SendTask
 {
 	private static final File dataDir = new File(Main.localFolder, "chunks");
-	private static final int chunkSize = 52428800;
+	private static final int chunkSize = 15728640;
 	private List<File> files;
 	private List<File> binFiles;
 	private LinkedList<Object> objectsToSend = new LinkedList<>();
@@ -104,7 +104,7 @@ public class SendTask
 	
 	private void writeObject(Object o) throws IOException
 	{
-		int bytesWritten = 0;
+		int bytesWritten;
 		long bytesRemaining;
 		byte[] tempBuffer;
 		
@@ -112,13 +112,13 @@ public class SendTask
 		{
 			tempBuffer = convertToBytes(o);
 			bytesRemaining = tempBuffer.length;
-			bytesWritten += writeBytes(tempBuffer, 0, tempBuffer.length);
+			bytesWritten = writeBytes(tempBuffer, 0, tempBuffer.length);
 			bytesRemaining -= bytesWritten;
 			
 			if(bytesRemaining > 0)
 			{
 				nextStream();
-				writeBytes(tempBuffer, bytesWritten, tempBuffer.length - bytesWritten);
+				writeBytes(tempBuffer, bytesWritten, (int) Math.min(tempBuffer.length - bytesWritten, bytesRemaining));
 			}
 		}
 		else
@@ -134,10 +134,11 @@ public class SendTask
 				bytesWritten = writeBytes(tempBuffer, 0, bytesRead);
 				bytesRemaining -= bytesWritten;
 				
-				if(bytesRead != bytesWritten && bytesRemaining > 0)
+				if(getFreeSpace() == 0 && bytesRemaining > 0)
 				{
 					nextStream();
-					writeBytes(tempBuffer, bytesRead - bytesWritten, tempBuffer.length - bytesWritten);
+					writeBytes(tempBuffer, bytesWritten, (int) Math
+							.min(tempBuffer.length - bytesWritten, bytesRemaining));
 				}
 			}
 		}
@@ -157,15 +158,51 @@ public class SendTask
 		return new byte[0];
 	}
 	
+	private int writeBytes(byte[] b, int off, int len) throws IOException
+	{
+		int ret = Math.min(getFreeSpace(), len);
+		currentStream.write(b, off, ret);
+		return ret;
+	}
+	
+	private byte[] convertLongToBytes(long val)
+	{
+		byte[] writeBuffer = new byte[8];
+		writeBuffer[0] = (byte) (val >>> 56);
+		writeBuffer[1] = (byte) (val >>> 48);
+		writeBuffer[2] = (byte) (val >>> 40);
+		writeBuffer[3] = (byte) (val >>> 32);
+		writeBuffer[4] = (byte) (val >>> 24);
+		writeBuffer[5] = (byte) (val >>> 16);
+		writeBuffer[6] = (byte) (val >>> 8);
+		writeBuffer[7] = (byte) val;
+		
+		return writeBuffer;
+	}
+	
+	private byte[] convertIntToBytes(int val)
+	{
+		byte[] buf = new byte[4];
+		buf[0] = (byte) ((val >>> 24) & 0xFF);
+		buf[1] = (byte) ((val >>> 16) & 0xFF);
+		buf[2] = (byte) ((val >>> 8) & 0xFF);
+		buf[3] = (byte) (val & 0xFF);
+		
+		return buf;
+	}
+	
+	private int getFreeSpace()
+	{
+		return chunkSize - currentStream.size();
+	}
+	
 	private byte[] convertStringToUTFBytes(String str)
 	{
 		int strlen = str.length();
 		int utflen = getUTFLength(str);
 		int c, count = 0;
 		
-		byte[] bytearr;
-		bytearr = new byte[utflen + 2];
-		
+		byte[] bytearr = new byte[utflen + 2];
 		bytearr[count++] = (byte) ((utflen >>> 8) & 0xFF);
 		bytearr[count++] = (byte) (utflen & 0xFF);
 		
@@ -203,42 +240,8 @@ public class SendTask
 		return bytearr;
 	}
 	
-	private byte[] convertLongToBytes(long val)
-	{
-		byte[] writeBuffer = new byte[8];
-		writeBuffer[0] = (byte) (val >>> 56);
-		writeBuffer[1] = (byte) (val >>> 48);
-		writeBuffer[2] = (byte) (val >>> 40);
-		writeBuffer[3] = (byte) (val >>> 32);
-		writeBuffer[4] = (byte) (val >>> 24);
-		writeBuffer[5] = (byte) (val >>> 16);
-		writeBuffer[6] = (byte) (val >>> 8);
-		writeBuffer[7] = (byte) val;
-		
-		return writeBuffer;
-	}
-	
-	private byte[] convertIntToBytes(int val)
-	{
-		byte[] buf = new byte[4];
-		buf[0] = (byte) ((val >>> 24) & 0xFF);
-		buf[1] = (byte) ((val >>> 16) & 0xFF);
-		buf[2] = (byte) ((val >>> 8) & 0xFF);
-		buf[3] = (byte) (val & 0xFF);
-		
-		return buf;
-	}
-	
-	private int writeBytes(byte[] b, int off, int len) throws IOException
-	{
-		int ret = Math.min(chunkSize - currentStream.size(), len);
-		currentStream.write(b, off, ret);
-		return ret;
-	}
-	
 	private void nextStream()
 	{
-		
 		try
 		{
 			currentStream.flush();
@@ -266,7 +269,7 @@ public class SendTask
 	
 	private DataOutputStream newStream(int i) throws FileNotFoundException
 	{
-		return new DataOutputStream(new BufferedOutputStream(new FileOutputStream(binFiles.get(i)), chunkSize));
+		return new DataOutputStream((new FileOutputStream(binFiles.get(i))));
 	}
 	
 	private void onChunkSent()
@@ -319,7 +322,6 @@ public class SendTask
 			out().writeInt(files.size());
 			
 			currentStream = newStream(0);
-			
 			for(Object o : objectsToSend)
 			{
 				writeObject(o);

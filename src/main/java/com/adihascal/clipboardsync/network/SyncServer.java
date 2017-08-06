@@ -2,6 +2,7 @@ package com.adihascal.clipboardsync.network;
 
 import com.adihascal.clipboardsync.Main;
 import com.adihascal.clipboardsync.handler.ClipHandlerRegistry;
+import com.adihascal.clipboardsync.handler.IClipHandler;
 
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
@@ -31,8 +32,9 @@ public class SyncServer extends Thread
 				{
 					case "receive":
 						Main.isBusy = true;
-						ClipHandlerRegistry.getHandlerFor(in().readUTF())
-								.receiveClip(Toolkit.getDefaultToolkit().getSystemClipboard());
+						IClipHandler handler =
+								ClipHandlerRegistry.getHandlerFor(in().readUTF());
+						handler.receiveClip(Toolkit.getDefaultToolkit().getSystemClipboard());
 						System.out.println("data received");
 						Main.isBusy = false;
 						break;
@@ -43,6 +45,8 @@ public class SyncServer extends Thread
 					case "disconnect":
 						System.out.println(SyncClient.phoneAddress + " disconnected");
 						SyncClient.phoneAddress = null;
+						SocketHolder.invalidate();
+						Main.restart();
 						return;
 					case "accept":
 						DataFlavor flavor = ClipHandlerRegistry.getSuitableFlavor(this.temp.getTransferDataFlavors());

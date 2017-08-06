@@ -17,14 +17,14 @@ import static com.adihascal.clipboardsync.network.SocketHolder.in;
 
 public class ReceiveTask
 {
-	private static void copyStream(InputStream input, OutputStream output, final long length) throws IOException
+	private void copyStream(InputStream input, OutputStream output, final long length) throws IOException
 	{
-		byte[] buffer = new byte[51200];
+		byte[] buffer = new byte[15360];
 		int bytesRead;
 		int totalBytesRead = 0;
 		while(totalBytesRead < length)
 		{
-			bytesRead = input.read(buffer, 0, (int) Math.min(length - totalBytesRead, 51200));
+			bytesRead = input.read(buffer, 0, (int) Math.min(length - totalBytesRead, 15360));
 			totalBytesRead += bytesRead;
 			output.write(buffer, 0, bytesRead);
 		}

@@ -144,8 +144,6 @@ public class Main implements ClipboardOwner
 	
 	public static void restart()
 	{
-		server.interrupt();
-		server = null;
 		server = new SyncServer();
 		server.start();
 	}
