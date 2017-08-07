@@ -44,14 +44,11 @@ public class SendTask
 			objectsToSend.add("dir");
 			File[] subs = f.listFiles();
 			assert subs != null;
-			if(subs.length > 0)
+			objectsToSend.add(f.getName());
+			objectsToSend.add(subs.length);
+			for(File sub : subs)
 			{
-				objectsToSend.add(f.getName());
-				objectsToSend.add(subs.length);
-				for(File sub : subs)
-				{
-					addToList(sub);
-				}
+				addToList(sub);
 			}
 		}
 	}
