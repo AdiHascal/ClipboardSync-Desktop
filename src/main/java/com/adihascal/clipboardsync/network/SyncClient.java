@@ -13,12 +13,12 @@ import static com.adihascal.clipboardsync.network.SocketHolder.out;
 public class SyncClient extends Thread
 {
 	static volatile String phoneAddress;
-	private final Transferable object;
+	private final Object args;
 	private final String command;
 	
-	public SyncClient(String comm, Transferable trans)
+	public SyncClient(String comm, Object args)
 	{
-		this.object = trans;
+		this.args = args;
 		this.command = comm;
 	}
 	
@@ -37,10 +37,10 @@ public class SyncClient extends Thread
 						phoneAddress = null;
 						break;
 					case "announce":
-						Main.getServer().setTransferable(this.object);
+						Main.getServer().setTransferable((Transferable) this.args);
 						out().writeUTF("announce");
 						IClipHandler handler = ClipHandlerRegistry.getHandlerFor(ClipHandlerRegistry
-								.getSuitableFlavor(this.object.getTransferDataFlavors()).getMimeType());
+								.getSuitableFlavor(((Transferable) this.args).getTransferDataFlavors()).getMimeType());
 						out().writeBoolean(handler instanceof IntentHandler);
 						System.out.println("remote aware of pending local data");
 						break;

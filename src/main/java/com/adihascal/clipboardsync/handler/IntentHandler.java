@@ -1,29 +1,26 @@
 package com.adihascal.clipboardsync.handler;
 
-import com.adihascal.clipboardsync.network.tasks.ReceiveTask;
-import com.adihascal.clipboardsync.network.tasks.SendTask;
+import com.adihascal.clipboardsync.tasks.ReceiveTask;
+import com.adihascal.clipboardsync.tasks.SendTask;
 
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 public class IntentHandler implements IClipHandler
 {
-	
 	@Override
-	public void sendClip(Transferable clip) throws IOException, UnsupportedFlavorException
+	public void sendClip(Transferable clip) throws Exception
 	{
 		List<File> files = (List<File>) clip.getTransferData(DataFlavor.javaFileListFlavor);
-		new SendTask(files).exec();
+		TaskHandler.setAndRun(new SendTask(files));
 	}
 	
 	@Override
-	public void receiveClip(Clipboard manager) throws IOException
+	public void receiveClip(Clipboard manager) throws Exception
 	{
-		new ReceiveTask().exec();
+		TaskHandler.setAndRun(new ReceiveTask());
 	}
 }

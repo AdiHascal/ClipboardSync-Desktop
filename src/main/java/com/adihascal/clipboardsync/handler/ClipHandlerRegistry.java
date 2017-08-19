@@ -31,7 +31,9 @@ public class ClipHandlerRegistry
 		for(DataFlavor df : types)
 		{
 			if(handlers.containsKey(df.getMimeType()))
+			{
 				return df;
+			}
 		}
 		return null;
 	}

@@ -28,8 +28,8 @@ import static lc.kra.system.keyboard.event.GlobalKeyEvent.*;
 public class Main implements ClipboardOwner
 {
 	public static final Main INSTANCE = new Main();
-	private static final String localFolderName = System.getProperty("user.home") + "/AppData/Local/ClipboardSync";
-	public static final File localFolder = new File(localFolderName);
+	public static final File localFolder = new File(System.getProperty("user.home") + "/AppData/Local/ClipboardSync");
+	public static final File packedTemp = new File(localFolder, "packed");
 	public static volatile boolean isBusy = false;
 	private static int port;
 	private static SyncServer server = new SyncServer();
@@ -41,9 +41,9 @@ public class Main implements ClipboardOwner
 		port = 63708;
 		try
 		{
-			if(!localFolder.exists())
+			if(!packedTemp.exists())
 			{
-				if(!localFolder.mkdir())
+				if(!packedTemp.mkdirs())
 				{
 					throw new Exception("failed to create temporary folder");
 				}
@@ -75,7 +75,8 @@ public class Main implements ClipboardOwner
 				}
 			}
 			ImageIO.write(image, "png", imageFile);
-		} catch(Exception e)
+		}
+		catch(Exception e)
 		{
 			e.printStackTrace();
 		}

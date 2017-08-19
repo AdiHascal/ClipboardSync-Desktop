@@ -3,11 +3,11 @@ package com.adihascal.clipboardsync.network;
 import com.adihascal.clipboardsync.Main;
 import com.adihascal.clipboardsync.handler.ClipHandlerRegistry;
 import com.adihascal.clipboardsync.handler.IClipHandler;
+import com.adihascal.clipboardsync.handler.TaskHandler;
 
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
-import java.awt.datatransfer.UnsupportedFlavorException;
 import java.io.IOException;
 
 import static com.adihascal.clipboardsync.network.SocketHolder.in;
@@ -26,7 +26,7 @@ public class SyncServer extends Thread
 			
 			while(true)
 			{
-				System.out.println("starting server");
+				System.out.println("waiting for input");
 				String command = in().readUTF();
 				switch(command)
 				{
@@ -72,11 +72,12 @@ public class SyncServer extends Thread
 						Main.isBusy = false;
 						break;
 					case "resume_transfer":
+						TaskHandler.resume();
 						break;
 				}
 			}
 		}
-		catch(IOException | UnsupportedFlavorException e)
+		catch(Exception e)
 		{
 			e.printStackTrace();
 			System.out.println("IO Error. Restarting server.");
@@ -90,7 +91,8 @@ public class SyncServer extends Thread
 		try
 		{
 			SocketHolder.invalidate();
-		} catch(IOException e)
+		}
+		catch(IOException e)
 		{
 			e.printStackTrace();
 		}

@@ -1,4 +1,4 @@
-package com.adihascal.clipboardsync.network.tasks;
+package com.adihascal.clipboardsync.tasks;
 
 import com.adihascal.clipboardsync.Main;
 
@@ -10,7 +10,7 @@ import java.util.List;
 import static com.adihascal.clipboardsync.network.SocketHolder.out;
 
 @SuppressWarnings({"ConstantConditions", "ResultOfMethodCallIgnored", "SpellCheckingInspection"})
-public class SendTask
+public class SendTask implements ITask
 {
 	private static final File dataDir = new File(Main.localFolder, "chunks");
 	private static final int chunkSize = 15728640;
@@ -281,7 +281,7 @@ public class SendTask
 		}
 	}
 	
-	private void run()
+	public void execute()
 	{
 		try
 		{
@@ -324,15 +324,11 @@ public class SendTask
 				writeObject(o);
 			}
 			nextStream();
+			finish();
 		}
 		catch(IOException e)
 		{
 			e.printStackTrace();
 		}
-	}
-	
-	public void exec()
-	{
-		this.run();
 	}
 }
