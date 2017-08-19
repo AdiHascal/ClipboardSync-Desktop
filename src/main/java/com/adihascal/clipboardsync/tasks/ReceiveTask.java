@@ -108,7 +108,16 @@ public class ReceiveTask implements ITask, IStreamSupplier
 			for(int i = 0; i < packedFiles.size(); i++)
 			{
 				RandomAccessFile raf = packedFiles.get(i);
-				getChunk(raf, i == packedFiles.size() - 1 ? size % chunkSize : chunkSize);
+				long length;
+				if(i == packedFiles.size() - 1 && size % chunkSize != 0)
+				{
+					length = size % chunkSize;
+				}
+				else
+				{
+					length = chunkSize;
+				}
+				getChunk(raf, length);
 				raf.close();
 				currentChunk++;
 			}
