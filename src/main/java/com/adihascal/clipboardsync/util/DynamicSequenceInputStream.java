@@ -16,10 +16,10 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 	public DynamicSequenceInputStream(IStreamSupplier supp)
 	{
 		this.supplier = supp;
-		next();
+		next(false);
 	}
 	
-	private void next()
+	private void next(boolean close)
 	{
 		try
 		{
@@ -29,15 +29,18 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 				Files.delete(Paths.get(Main.packedTemp.getPath(), Integer.toString(streamIndex) + ".bin"));
 			}
 			
-			while(true)
+			if(!close)
 			{
-				if(supplier.canProvide(streamIndex + 1))
+				while(true)
 				{
-					FileInputStream fIn = (FileInputStream) supplier.next(streamIndex++);
-					pos = 0;
-					count = fIn.available();
-					in = new BufferedInputStream(fIn, 15360);
-					break;
+					if(supplier.canProvide(streamIndex + 1))
+					{
+						FileInputStream fIn = (FileInputStream) supplier.next(streamIndex++);
+						pos = 0;
+						count = fIn.available();
+						in = new BufferedInputStream(fIn, 15360);
+						break;
+					}
 				}
 			}
 		}
@@ -62,7 +65,7 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 		}
 		else
 		{
-			next();
+			next(false);
 			pos++;
 			return in.read();
 		}
@@ -120,7 +123,7 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 	{
 		if(in != null)
 		{
-			in.close();
+			next(true);
 		}
 	}
 	
