@@ -149,6 +149,19 @@ public class ReceiveTask implements ITask, IStreamSupplier
 		return index < currentChunk;
 	}
 	
+	@Override
+	public void afterClose(int index)
+	{
+		try
+		{
+			Files.delete(Paths.get(Main.packedTemp.getPath(), Integer.toString(index) + ".bin"));
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
 	private static class Unpacker implements Runnable
 	{
 		private DynamicSequenceInputStream src;

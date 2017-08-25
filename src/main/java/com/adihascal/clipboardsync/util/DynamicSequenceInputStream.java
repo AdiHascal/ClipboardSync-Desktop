@@ -1,10 +1,6 @@
 package com.adihascal.clipboardsync.util;
 
-import com.adihascal.clipboardsync.Main;
-
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 public class DynamicSequenceInputStream extends InputStream implements DataInput
 {
@@ -26,7 +22,7 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 			if(in != null)
 			{
 				in.close();
-				Files.delete(Paths.get(Main.packedTemp.getPath(), Integer.toString(streamIndex) + ".bin"));
+				supplier.afterClose(streamIndex);
 			}
 			
 			if(!close)
@@ -139,7 +135,7 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 				throw new EOFException();
 			}
 			n += count;
-		}while(n < len);
+		} while(n < len);
 	}
 	
 	@Override
