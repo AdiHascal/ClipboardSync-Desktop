@@ -57,6 +57,7 @@ public class SyncServer extends Thread
 							ClipHandlerRegistry.getHandlerFor(flavor.getMimeType())
 									.sendClip(this.temp);
 							System.out.println("data sent");
+							this.temp = null;
 							Main.isBusy = false;
 						}
 						break;

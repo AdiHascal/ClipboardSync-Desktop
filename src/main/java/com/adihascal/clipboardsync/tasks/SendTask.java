@@ -1,25 +1,28 @@
 package com.adihascal.clipboardsync.tasks;
 
 import com.adihascal.clipboardsync.Main;
+import com.adihascal.clipboardsync.util.DynamicSequenceOutputStream;
+import com.adihascal.clipboardsync.util.IStreamSupplier;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import static com.adihascal.clipboardsync.network.SocketHolder.in;
 import static com.adihascal.clipboardsync.network.SocketHolder.out;
 
 @SuppressWarnings({"ConstantConditions", "ResultOfMethodCallIgnored", "SpellCheckingInspection"})
-public class SendTask implements ITask
+public class SendTask implements ITask, IStreamSupplier<OutputStream>
 {
 	private static final File dataDir = new File(Main.localFolder, "chunks");
 	private static final int chunkSize = 15728640;
 	private List<File> files;
 	private List<File> binFiles;
 	private LinkedList<Object> objectsToSend = new LinkedList<>();
-	private DataOutputStream currentStream;
+	private DynamicSequenceOutputStream stream;
 	private int currentChunk = 0;
-	private int nChunks;
 	
 	public SendTask(List<File> uList)
 	{
@@ -99,45 +102,54 @@ public class SendTask implements ITask
 		return len;
 	}
 	
-	private void writeObject(Object o) throws IOException
+	public synchronized void execute()
 	{
-		int bytesWritten;
-		long bytesRemaining;
-		byte[] tempBuffer;
-		
-		if(!(o instanceof File))
+		try
 		{
-			tempBuffer = convertToBytes(o);
-			bytesRemaining = tempBuffer.length;
-			bytesWritten = writeBytes(tempBuffer, 0, tempBuffer.length);
-			bytesRemaining -= bytesWritten;
-			
-			if(bytesRemaining > 0)
+			for(File bin : dataDir.listFiles())
 			{
-				nextStream();
-				writeBytes(tempBuffer, bytesWritten, (int) Math.min(tempBuffer.length - bytesWritten, bytesRemaining));
-			}
-		}
-		else
-		{
-			bytesRemaining = ((File) o).length();
-			FileInputStream in = new FileInputStream((File) o);
-			
-			tempBuffer = new byte[chunkSize / 1024];
-			int bytesRead;
-			
-			while((bytesRead = in.read(tempBuffer, 0, tempBuffer.length)) != -1)
-			{
-				bytesWritten = writeBytes(tempBuffer, 0, bytesRead);
-				bytesRemaining -= bytesWritten;
-				
-				if(getFreeSpace() == 0 && bytesRemaining > 0)
+				if(bin.getName().endsWith(".bin"))
 				{
-					nextStream();
-					writeBytes(tempBuffer, bytesWritten, (int) Math
-							.min(tempBuffer.length - bytesWritten, bytesRemaining));
+					bin.delete();
 				}
 			}
+			
+			for(File f : files)
+			{
+				addToList(f);
+			}
+			
+			long length = 0L;
+			for(Object o : objectsToSend)
+			{
+				length += getObjectLength(o);
+			}
+			
+			int nChunks = (int) Math.ceil((double) length / chunkSize);
+			
+			binFiles = new ArrayList<>(files.size());
+			for(int i = 0; i < nChunks; i++)
+			{
+				File f = new File(dataDir, Integer.toString(i) + ".bin");
+				f.createNewFile();
+				binFiles.add(i, f);
+			}
+			
+			out().writeUTF("application/x-java-serialized-object");
+			out().writeLong(length);
+			out().writeInt(files.size());
+			
+			stream = new DynamicSequenceOutputStream(this);
+			for(Object o : objectsToSend)
+			{
+				writeObject(o);
+			}
+			stream.close();
+			finish();
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
 		}
 	}
 	
@@ -153,13 +165,6 @@ public class SendTask implements ITask
 				return convertLongToBytes(((Long) o));
 		}
 		return new byte[0];
-	}
-	
-	private int writeBytes(byte[] b, int off, int len) throws IOException
-	{
-		int ret = Math.min(getFreeSpace(), len);
-		currentStream.write(b, off, ret);
-		return ret;
 	}
 	
 	private byte[] convertLongToBytes(long val)
@@ -186,11 +191,6 @@ public class SendTask implements ITask
 		buf[3] = (byte) (val & 0xFF);
 		
 		return buf;
-	}
-	
-	private int getFreeSpace()
-	{
-		return chunkSize - currentStream.size();
 	}
 	
 	private byte[] convertStringToUTFBytes(String str)
@@ -237,98 +237,84 @@ public class SendTask implements ITask
 		return bytearr;
 	}
 	
-	private void nextStream()
+	private void writeObject(Object o) throws IOException
+	{
+		if(!(o instanceof File))
+		{
+			stream.write(convertToBytes(o));
+		}
+		else
+		{
+			FileInputStream in = new FileInputStream((File) o);
+			byte[] tempBuffer = new byte[chunkSize / 1024];
+			while(in.read(tempBuffer, 0, tempBuffer.length) != -1)
+			{
+				stream.write(tempBuffer);
+			}
+		}
+	}
+	
+	@Override
+	public OutputStream next(int prevIndex)
 	{
 		try
 		{
-			currentStream.flush();
-			currentStream.close();
-			currentChunk++;
-			if(currentChunk < nChunks)
-			{
-				currentStream = newStream(currentChunk);
-			}
+			return new FileOutputStream(binFiles.get(++prevIndex));
+		}
+		catch(FileNotFoundException e)
+		{
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	@Override
+	public boolean canProvide(int index)
+	{
+		return index < currentChunk;
+	}
+	
+	@Override
+	public void afterClose(int index)
+	{
+		afterClose(index, false);
+	}
+	
+	private synchronized void afterClose(int index, boolean recursive)
+	{
+		try
+		{
 			byte[] buffer = new byte[chunkSize / 1024];
 			int bytesRead;
-			FileInputStream input = new FileInputStream(binFiles.get(currentChunk - 1));
+			RandomAccessFile input = new RandomAccessFile(binFiles.get(index), "rw");
+			if(!recursive)
+			{
+				currentChunk++;
+			}
+			else
+			{
+				input.seek(in().readLong());
+			}
+			
 			while((bytesRead = input.read(buffer)) != -1)
 			{
 				out().write(buffer, 0, bytesRead);
 			}
 			input.close();
-			onChunkSent();
+			Files.delete(binFiles.get(index).toPath());
 		}
 		catch(IOException e)
 		{
-			e.printStackTrace();
-		}
-	}
-	
-	private DataOutputStream newStream(int i) throws FileNotFoundException
-	{
-		return new DataOutputStream((new FileOutputStream(binFiles.get(i))));
-	}
-	
-	private void onChunkSent()
-	{
-		if(currentChunk > 1)
-		{
-			File f = binFiles.get(currentChunk - 2);
-			if(f.exists())
+			try
 			{
-				f.delete();
+				wait(30000);
+				afterClose(index, true);
+				e.printStackTrace();
 			}
-		}
-	}
-	
-	public void execute()
-	{
-		try
-		{
-			for(File bin : dataDir.listFiles())
+			catch(InterruptedException e1)
 			{
-				if(bin.getName().endsWith(".bin"))
-				{
-					bin.delete();
-				}
+				e1.printStackTrace();
 			}
-			
-			for(File f : files)
-			{
-				addToList(f);
-			}
-			
-			long length = 0L;
-			for(Object o : objectsToSend)
-			{
-				length += getObjectLength(o);
-			}
-			
-			nChunks = (int) Math.ceil((double) length / chunkSize);
-			
-			binFiles = new ArrayList<>(files.size());
-			for(int i = 0; i < nChunks; i++)
-			{
-				File f = new File(dataDir, Integer.toString(i) + ".bin");
-				f.createNewFile();
-				binFiles.add(i, f);
-			}
-			
-			out().writeUTF("application/x-java-serialized-object");
-			out().writeLong(length);
-			out().writeInt(files.size());
-			
-			currentStream = newStream(0);
-			for(Object o : objectsToSend)
-			{
-				writeObject(o);
-			}
-			nextStream();
-			finish();
-		}
-		catch(IOException e)
-		{
-			e.printStackTrace();
 		}
 	}
 }

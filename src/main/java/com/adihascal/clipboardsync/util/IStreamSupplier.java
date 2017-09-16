@@ -1,10 +1,10 @@
 package com.adihascal.clipboardsync.util;
 
-import java.io.InputStream;
+import java.io.Closeable;
 
-public interface IStreamSupplier
+public interface IStreamSupplier<T extends Closeable>
 {
-	InputStream next(int prevIndex);
+	T next(int prevIndex);
 	
 	boolean canProvide(int index);
 	

@@ -8,8 +8,11 @@ public class TaskHandler
 	
 	static void setAndRun(ITask task) throws Exception
 	{
-		set(task);
-		run();
+		if(current == null)
+		{
+			set(task);
+			run();
+		}
 	}
 	
 	private static void set(ITask task) throws Exception
@@ -41,7 +44,7 @@ public class TaskHandler
 	
 	public static void pause() throws InterruptedException
 	{
-		synchronized(current)
+		if(current != null)
 		{
 			current.wait();
 		}
@@ -49,7 +52,7 @@ public class TaskHandler
 	
 	public static void resume()
 	{
-		synchronized(current)
+		if(current != null)
 		{
 			current.notify();
 		}

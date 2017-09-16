@@ -4,12 +4,12 @@ import java.io.*;
 
 public class DynamicSequenceInputStream extends InputStream implements DataInput
 {
-	private final IStreamSupplier supplier;
+	private final IStreamSupplier<InputStream> supplier;
 	private InputStream in;
 	private int pos, count;
 	private int streamIndex = -1;
 	
-	public DynamicSequenceInputStream(IStreamSupplier supp)
+	public DynamicSequenceInputStream(IStreamSupplier<InputStream> supp)
 	{
 		this.supplier = supp;
 		next(false);

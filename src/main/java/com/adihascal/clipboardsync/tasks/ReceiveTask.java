@@ -14,8 +14,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.adihascal.clipboardsync.network.SocketHolder.in;
+import static com.adihascal.clipboardsync.network.SocketHolder.out;
 
-public class ReceiveTask implements ITask, IStreamSupplier
+public class ReceiveTask implements ITask, IStreamSupplier<InputStream>
 {
 	private static final int chunkSize = 15728640;
 	private volatile int currentChunk = 0;
@@ -31,8 +32,8 @@ public class ReceiveTask implements ITask, IStreamSupplier
 			while(totalBytesRead < length)
 			{
 				bytesRead = in().read(buffer, 0, Math.min(chunkSize - totalBytesRead, buffer.length));
-				totalBytesRead += bytesRead;
 				raf.write(buffer, 0, bytesRead);
+				totalBytesRead += bytesRead;
 			}
 		}
 		catch(IOException e)
@@ -40,7 +41,9 @@ public class ReceiveTask implements ITask, IStreamSupplier
 			e.printStackTrace();
 			try
 			{
+				System.out.println("network error. waiting.");
 				TaskHandler.pause();
+				out().writeLong(totalBytesRead);
 				raf.seek(totalBytesRead);
 				getChunk(raf, length);
 			}
@@ -87,7 +90,7 @@ public class ReceiveTask implements ITask, IStreamSupplier
 		}
 	}
 	
-	public void execute()
+	public synchronized void execute()
 	{
 		try
 		{
@@ -165,9 +168,9 @@ public class ReceiveTask implements ITask, IStreamSupplier
 	private static class Unpacker implements Runnable
 	{
 		private DynamicSequenceInputStream src;
-		private IStreamSupplier supplier;
+		private IStreamSupplier<InputStream> supplier;
 		
-		private Unpacker(IStreamSupplier supp)
+		private Unpacker(IStreamSupplier<InputStream> supp)
 		{
 			this.supplier = supp;
 		}
