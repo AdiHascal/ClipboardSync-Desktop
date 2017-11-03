@@ -23,7 +23,7 @@ public class SyncClient extends Thread
 	}
 	
 	@Override
-	public void run()
+	public synchronized void run()
 	{
 		if(phoneAddress != null)
 		{

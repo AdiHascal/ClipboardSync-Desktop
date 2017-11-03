@@ -6,13 +6,26 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 {
 	private final IStreamSupplier<InputStream> supplier;
 	private InputStream in;
-	private int pos, count;
-	private int streamIndex = -1;
+	private int streamIndex = 0;
 	
 	public DynamicSequenceInputStream(IStreamSupplier<InputStream> supp)
 	{
 		this.supplier = supp;
 		next(false);
+	}
+	
+	public int read() throws IOException
+	{
+		int r = in.read();
+		if(r != -1)
+		{
+			return r;
+		}
+		else
+		{
+			next(false);
+			return in.read();
+		}
 	}
 	
 	private void next(boolean close)
@@ -22,19 +35,17 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 			if(in != null)
 			{
 				in.close();
-				supplier.afterClose(streamIndex);
+				supplier.afterClose(streamIndex - 1);
 			}
 			
 			if(!close)
 			{
 				while(true)
 				{
-					if(supplier.canProvide(streamIndex + 1))
+					if(supplier.canProvide(streamIndex))
 					{
 						FileInputStream fIn = (FileInputStream) supplier.next(streamIndex++);
-						pos = 0;
-						count = fIn.available();
-						in = new BufferedInputStream(fIn, 15360);
+						in = new BufferedInputStream(fIn, 61440);
 						break;
 					}
 				}
@@ -50,21 +61,6 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 	public void readFully(byte[] b) throws IOException
 	{
 		readFully(b, 0, b.length);
-	}
-	
-	public int read() throws IOException
-	{
-		if(pos < count)
-		{
-			pos++;
-			return in.read();
-		}
-		else
-		{
-			next(false);
-			pos++;
-			return in.read();
-		}
 	}
 	
 	public int read(byte[] b, int off, int len) throws IOException
@@ -109,12 +105,6 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 	}
 	
 	@Override
-	public int available() throws IOException
-	{
-		return count - pos;
-	}
-	
-	@Override
 	public void close() throws IOException
 	{
 		if(in != null)
@@ -149,7 +139,6 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 			total += cur;
 		}
 		
-		pos += total;
 		return total;
 	}
 	

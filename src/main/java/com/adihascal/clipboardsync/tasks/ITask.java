@@ -2,12 +2,12 @@ package com.adihascal.clipboardsync.tasks;
 
 import com.adihascal.clipboardsync.handler.TaskHandler;
 
-public interface ITask
+public interface ITask extends Runnable
 {
-	void execute();
+	void run();
 	
 	default void finish()
 	{
-		TaskHandler.pop();
+		TaskHandler.INSTANCE.pop();
 	}
 }

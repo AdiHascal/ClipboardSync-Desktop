@@ -2,6 +2,7 @@ package com.adihascal.clipboardsync.tasks;
 
 import com.adihascal.clipboardsync.Main;
 import com.adihascal.clipboardsync.handler.TaskHandler;
+import com.adihascal.clipboardsync.network.SocketHolder;
 import com.adihascal.clipboardsync.transferable.FileListTransferable;
 import com.adihascal.clipboardsync.util.DynamicSequenceInputStream;
 import com.adihascal.clipboardsync.util.IStreamSupplier;
@@ -20,6 +21,8 @@ public class ReceiveTask implements ITask, IStreamSupplier<InputStream>
 {
 	private static final int chunkSize = 15728640;
 	private volatile int currentChunk = 0;
+	private long size;
+	private int nChunks;
 	
 	private void getChunk(RandomAccessFile raf, long length)
 	{
@@ -42,7 +45,7 @@ public class ReceiveTask implements ITask, IStreamSupplier<InputStream>
 			try
 			{
 				System.out.println("network error. waiting.");
-				TaskHandler.pause();
+				TaskHandler.INSTANCE.pause();
 				out().writeLong(totalBytesRead);
 				raf.seek(totalBytesRead);
 				getChunk(raf, length);
@@ -90,29 +93,29 @@ public class ReceiveTask implements ITask, IStreamSupplier<InputStream>
 		}
 	}
 	
-	public synchronized void execute()
+	public void run()
 	{
 		try
 		{
 			deleteExisting();
-			long size = in().readLong();
-			int nChunks = (int) Math.ceil((double) size / chunkSize);
-			ArrayList<RandomAccessFile> packedFiles = new ArrayList<>(nChunks);
+			size = in().readLong();
+			nChunks = (int) Math.ceil((double) size / chunkSize);
+			RandomAccessFile[] packedFiles = new RandomAccessFile[nChunks];
+			SocketHolder.getSocket().setSoTimeout(5000);
 			
 			for(int i = 0; i < nChunks; i++)
 			{
 				String path = Main.packedTemp.getPath() + "\\" + Integer.toString(i) + ".bin";
 				Files.createFile(Paths.get(path));
-				RandomAccessFile p = new RandomAccessFile(path, "rw");
-				packedFiles.add(i, p);
+				packedFiles[i] = new RandomAccessFile(path, "rw");
 			}
 			
 			new Thread(new Unpacker(this)).start();
-			for(int i = 0; i < packedFiles.size(); i++)
+			for(int i = 0; i < packedFiles.length; i++)
 			{
-				RandomAccessFile raf = packedFiles.get(i);
+				RandomAccessFile raf = packedFiles[i];
 				long length;
-				if(i == packedFiles.size() - 1 && size % chunkSize != 0)
+				if(i == packedFiles.length - 1 && size % chunkSize != 0)
 				{
 					length = size % chunkSize;
 				}
@@ -133,11 +136,11 @@ public class ReceiveTask implements ITask, IStreamSupplier<InputStream>
 	}
 	
 	@Override
-	public InputStream next(int prevIndex)
+	public InputStream next(int index)
 	{
 		try
 		{
-			return new FileInputStream(new File(Main.packedTemp, Integer.toString(++prevIndex) + ".bin"));
+			return new FileInputStream(new File(Main.packedTemp, Integer.toString(index) + ".bin"));
 		}
 		catch(FileNotFoundException e)
 		{
@@ -162,6 +165,19 @@ public class ReceiveTask implements ITask, IStreamSupplier<InputStream>
 		catch(IOException e)
 		{
 			e.printStackTrace();
+		}
+	}
+	
+	@Override
+	public long length(int index)
+	{
+		if(index == nChunks - 1 && size % chunkSize != 0)
+		{
+			return size % chunkSize;
+		}
+		else
+		{
+			return chunkSize;
 		}
 	}
 	

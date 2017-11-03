@@ -15,11 +15,13 @@ public class TextHandler implements IClipHandler
 	{
 		out().writeUTF("text/plain");
 		out().writeUTF((String) clip.getTransferData(DataFlavor.stringFlavor));
+		Main.isBusy = false;
 	}
 	
 	@Override
 	public void receiveClip(Clipboard manager) throws IOException
 	{
 		manager.setContents(new StringSelection(in().readUTF()), Main.INSTANCE);
+		Main.isBusy = false;
 	}
 }

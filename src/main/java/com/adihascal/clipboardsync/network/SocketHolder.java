@@ -39,12 +39,17 @@ public class SocketHolder
 		return socketIn;
 	}
 	
+	public static Socket getSocket()
+	{
+		return socket;
+	}
+	
 	public static DataOutputStream out()
 	{
 		return socketOut;
 	}
 	
-	static void invalidate() throws IOException
+	public static void invalidate() throws IOException
 	{
 		if(socket != null)
 		{

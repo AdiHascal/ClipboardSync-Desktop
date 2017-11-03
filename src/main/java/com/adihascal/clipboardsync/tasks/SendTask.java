@@ -1,12 +1,14 @@
 package com.adihascal.clipboardsync.tasks;
 
 import com.adihascal.clipboardsync.Main;
+import com.adihascal.clipboardsync.handler.TaskHandler;
 import com.adihascal.clipboardsync.util.DynamicSequenceOutputStream;
 import com.adihascal.clipboardsync.util.IStreamSupplier;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -23,6 +25,8 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 	private LinkedList<Object> objectsToSend = new LinkedList<>();
 	private DynamicSequenceOutputStream stream;
 	private int currentChunk = 0;
+	private long size = 0L;
+	private int nChunks;
 	
 	public SendTask(List<File> uList)
 	{
@@ -49,35 +53,24 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 			assert subs != null;
 			objectsToSend.add(f.getName());
 			objectsToSend.add(subs.length);
-			for(File sub : subs)
-			{
-				addToList(sub);
-			}
+			Arrays.stream(subs).forEach(this :: addToList);
 		}
 	}
 	
 	private long getObjectLength(Object o)
 	{
-		if(o instanceof String)
+		switch(o.getClass().getSimpleName())
 		{
-			return getUTFLength((String) o);
+			case "String":
+				return getUTFLength((String) o) + 2;
+			case "Integer":
+				return 4;
+			case "Long":
+				return 8;
+			case "File":
+				return ((File) o).length();
 		}
-		else if(o instanceof Long)
-		{
-			return 8;
-		}
-		else if(o instanceof Integer)
-		{
-			return 4;
-		}
-		else if(o instanceof File)
-		{
-			return ((File) o).length();
-		}
-		else
-		{
-			return 0;
-		}
+		throw new IllegalArgumentException("Invalid type");
 	}
 	
 	private int getUTFLength(String str)
@@ -102,32 +95,26 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 		return len;
 	}
 	
-	public synchronized void execute()
+	public void run()
 	{
 		try
 		{
-			for(File bin : dataDir.listFiles())
-			{
-				if(bin.getName().endsWith(".bin"))
+			Files.list(dataDir.toPath()).filter(f -> f.getFileName().endsWith(".bin")).forEach(f -> {
+				try
 				{
-					bin.delete();
+					Files.delete(f);
 				}
-			}
+				catch(IOException e)
+				{
+					e.printStackTrace();
+				}
+			});
 			
-			for(File f : files)
-			{
-				addToList(f);
-			}
+			files.forEach(this :: addToList);
+			size = objectsToSend.stream().mapToLong(this :: getObjectLength).sum();
+			nChunks = (int) Math.ceil((double) size / chunkSize);
 			
-			long length = 0L;
-			for(Object o : objectsToSend)
-			{
-				length += getObjectLength(o);
-			}
-			
-			int nChunks = (int) Math.ceil((double) length / chunkSize);
-			
-			binFiles = new ArrayList<>(files.size());
+			binFiles = new ArrayList<>(nChunks);
 			for(int i = 0; i < nChunks; i++)
 			{
 				File f = new File(dataDir, Integer.toString(i) + ".bin");
@@ -136,16 +123,38 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 			}
 			
 			out().writeUTF("application/x-java-serialized-object");
-			out().writeLong(length);
+			out().writeLong(size);
 			out().writeInt(files.size());
 			
 			stream = new DynamicSequenceOutputStream(this);
-			for(Object o : objectsToSend)
-			{
-				writeObject(o);
-			}
+			objectsToSend.forEach(this :: writeObject);
 			stream.close();
 			finish();
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
+	private void writeObject(Object o)
+	{
+		try
+		{
+			if(!(o instanceof File))
+			{
+				stream.write(convertToBytes(o));
+			}
+			else
+			{
+				FileInputStream in = new FileInputStream((File) o);
+				byte[] tempBuffer = new byte[chunkSize / 1024];
+				int bytesRead;
+				while((bytesRead = in.read(tempBuffer)) != -1)
+				{
+					stream.write(tempBuffer, 0, bytesRead);
+				}
+			}
 		}
 		catch(IOException e)
 		{
@@ -165,32 +174,6 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 				return convertLongToBytes(((Long) o));
 		}
 		return new byte[0];
-	}
-	
-	private byte[] convertLongToBytes(long val)
-	{
-		byte[] writeBuffer = new byte[8];
-		writeBuffer[0] = (byte) (val >>> 56);
-		writeBuffer[1] = (byte) (val >>> 48);
-		writeBuffer[2] = (byte) (val >>> 40);
-		writeBuffer[3] = (byte) (val >>> 32);
-		writeBuffer[4] = (byte) (val >>> 24);
-		writeBuffer[5] = (byte) (val >>> 16);
-		writeBuffer[6] = (byte) (val >>> 8);
-		writeBuffer[7] = (byte) val;
-		
-		return writeBuffer;
-	}
-	
-	private byte[] convertIntToBytes(int val)
-	{
-		byte[] buf = new byte[4];
-		buf[0] = (byte) ((val >>> 24) & 0xFF);
-		buf[1] = (byte) ((val >>> 16) & 0xFF);
-		buf[2] = (byte) ((val >>> 8) & 0xFF);
-		buf[3] = (byte) (val & 0xFF);
-		
-		return buf;
 	}
 	
 	private byte[] convertStringToUTFBytes(String str)
@@ -237,29 +220,38 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 		return bytearr;
 	}
 	
-	private void writeObject(Object o) throws IOException
+	private byte[] convertIntToBytes(int val)
 	{
-		if(!(o instanceof File))
-		{
-			stream.write(convertToBytes(o));
-		}
-		else
-		{
-			FileInputStream in = new FileInputStream((File) o);
-			byte[] tempBuffer = new byte[chunkSize / 1024];
-			while(in.read(tempBuffer, 0, tempBuffer.length) != -1)
-			{
-				stream.write(tempBuffer);
-			}
-		}
+		byte[] buf = new byte[4];
+		buf[0] = (byte) ((val >>> 24) & 0xFF);
+		buf[1] = (byte) ((val >>> 16) & 0xFF);
+		buf[2] = (byte) ((val >>> 8) & 0xFF);
+		buf[3] = (byte) (val & 0xFF);
+		
+		return buf;
+	}
+	
+	private byte[] convertLongToBytes(long val)
+	{
+		byte[] writeBuffer = new byte[8];
+		writeBuffer[0] = (byte) (val >>> 56);
+		writeBuffer[1] = (byte) (val >>> 48);
+		writeBuffer[2] = (byte) (val >>> 40);
+		writeBuffer[3] = (byte) (val >>> 32);
+		writeBuffer[4] = (byte) (val >>> 24);
+		writeBuffer[5] = (byte) (val >>> 16);
+		writeBuffer[6] = (byte) (val >>> 8);
+		writeBuffer[7] = (byte) val;
+		
+		return writeBuffer;
 	}
 	
 	@Override
-	public OutputStream next(int prevIndex)
+	public OutputStream next(int index)
 	{
 		try
 		{
-			return new FileOutputStream(binFiles.get(++prevIndex));
+			return new FileOutputStream(binFiles.get(index));
 		}
 		catch(FileNotFoundException e)
 		{
@@ -280,7 +272,20 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 		afterClose(index, false);
 	}
 	
-	private synchronized void afterClose(int index, boolean recursive)
+	@Override
+	public long length(int index)
+	{
+		if(index == nChunks - 1 && size % chunkSize != 0)
+		{
+			return size % chunkSize;
+		}
+		else
+		{
+			return chunkSize;
+		}
+	}
+	
+	private void afterClose(int index, boolean recursive)
 	{
 		try
 		{
@@ -307,11 +312,11 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 		{
 			try
 			{
-				wait(30000);
+				TaskHandler.INSTANCE.pause();
 				afterClose(index, true);
 				e.printStackTrace();
 			}
-			catch(InterruptedException e1)
+			catch(InterruptedException | IOException e1)
 			{
 				e1.printStackTrace();
 			}

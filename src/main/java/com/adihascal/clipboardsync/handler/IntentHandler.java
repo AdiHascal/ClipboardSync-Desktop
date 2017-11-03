@@ -15,12 +15,12 @@ public class IntentHandler implements IClipHandler
 	public void sendClip(Transferable clip) throws Exception
 	{
 		List<File> files = (List<File>) clip.getTransferData(DataFlavor.javaFileListFlavor);
-		TaskHandler.setAndRun(new SendTask(files));
+		TaskHandler.INSTANCE.setAndRun(new SendTask(files));
 	}
 	
 	@Override
 	public void receiveClip(Clipboard manager) throws Exception
 	{
-		TaskHandler.setAndRun(new ReceiveTask());
+		TaskHandler.INSTANCE.setAndRun(new ReceiveTask());
 	}
 }

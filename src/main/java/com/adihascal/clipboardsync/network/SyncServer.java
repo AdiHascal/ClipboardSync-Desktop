@@ -3,7 +3,6 @@ package com.adihascal.clipboardsync.network;
 import com.adihascal.clipboardsync.Main;
 import com.adihascal.clipboardsync.handler.ClipHandlerRegistry;
 import com.adihascal.clipboardsync.handler.IClipHandler;
-import com.adihascal.clipboardsync.handler.TaskHandler;
 
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
@@ -18,7 +17,7 @@ public class SyncServer extends Thread
 	private Transferable temp;
 	
 	@Override
-	public void run()
+	public synchronized void run()
 	{
 		try
 		{
@@ -27,6 +26,10 @@ public class SyncServer extends Thread
 			while(true)
 			{
 				System.out.println("waiting for input");
+				while(Main.isBusy)
+				{
+					wait(1000);
+				}
 				String command = in().readUTF();
 				switch(command)
 				{
@@ -35,8 +38,7 @@ public class SyncServer extends Thread
 						IClipHandler handler =
 								ClipHandlerRegistry.getHandlerFor(in().readUTF());
 						handler.receiveClip(Toolkit.getDefaultToolkit().getSystemClipboard());
-						System.out.println("data received");
-						Main.isBusy = false;
+						System.out.println("receiving data");
 						break;
 					case "connect":
 						SyncClient.phoneAddress = in().readUTF();
@@ -56,9 +58,8 @@ public class SyncServer extends Thread
 							out().writeUTF("receive");
 							ClipHandlerRegistry.getHandlerFor(flavor.getMimeType())
 									.sendClip(this.temp);
-							System.out.println("data sent");
+							System.out.println("sending data");
 							this.temp = null;
-							Main.isBusy = false;
 						}
 						break;
 					case "refuse":
@@ -71,9 +72,6 @@ public class SyncServer extends Thread
 					case "resume":
 						System.out.println("resumed");
 						Main.isBusy = false;
-						break;
-					case "resume_transfer":
-						TaskHandler.resume();
 						break;
 				}
 			}

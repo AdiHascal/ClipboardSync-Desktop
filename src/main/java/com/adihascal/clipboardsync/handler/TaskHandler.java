@@ -1,12 +1,18 @@
 package com.adihascal.clipboardsync.handler;
 
+import com.adihascal.clipboardsync.Main;
+import com.adihascal.clipboardsync.network.ResumeListener;
+import com.adihascal.clipboardsync.network.SocketHolder;
 import com.adihascal.clipboardsync.tasks.ITask;
+
+import java.io.IOException;
 
 public class TaskHandler
 {
-	private static ITask current;
+	public static final TaskHandler INSTANCE = new TaskHandler();
+	private Thread current;
 	
-	static void setAndRun(ITask task) throws Exception
+	void setAndRun(ITask task) throws Exception
 	{
 		if(current == null)
 		{
@@ -15,11 +21,11 @@ public class TaskHandler
 		}
 	}
 	
-	private static void set(ITask task) throws Exception
+	private void set(ITask task) throws Exception
 	{
 		if(current == null)
 		{
-			current = task;
+			current = new Thread(task);
 		}
 		else
 		{
@@ -27,34 +33,29 @@ public class TaskHandler
 		}
 	}
 	
-	private static void run()
+	private void run()
 	{
-		current.execute();
+		current.start();
 	}
 	
-	public static ITask get()
+	public Thread get()
 	{
 		return current;
 	}
 	
-	public static void pop()
+	public void pop()
 	{
 		current = null;
+		Main.isBusy = false;
 	}
 	
-	public static void pause() throws InterruptedException
+	public void pause() throws InterruptedException, IOException
 	{
-		if(current != null)
+		synchronized(current)
 		{
+			SocketHolder.invalidate();
+			new Thread(new ResumeListener()).start();
 			current.wait();
-		}
-	}
-	
-	public static void resume()
-	{
-		if(current != null)
-		{
-			current.notify();
 		}
 	}
 }

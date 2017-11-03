@@ -8,7 +8,7 @@ import java.io.OutputStream;
 public class DynamicSequenceOutputStream extends OutputStream
 {
 	private final IStreamSupplier<OutputStream> supplier;
-	private int streamIndex = -1;
+	private int streamIndex = 0;
 	private int count, pos;
 	private OutputStream out;
 	
@@ -22,13 +22,14 @@ public class DynamicSequenceOutputStream extends OutputStream
 	{
 		if(pos < count)
 		{
-			pos++;
 			out.write(b);
+			pos++;
 		}
 		else
 		{
 			next(false);
 			out.write(b);
+			pos++;
 		}
 	}
 	
@@ -39,15 +40,15 @@ public class DynamicSequenceOutputStream extends OutputStream
 			if(out != null)
 			{
 				out.close();
-				supplier.afterClose(streamIndex);
+				supplier.afterClose(streamIndex - 1);
 			}
 			
 			if(!close)
 			{
-				FileOutputStream fIn = (FileOutputStream) supplier.next(streamIndex++);
+				FileOutputStream fIn = (FileOutputStream) supplier.next(streamIndex);
 				pos = 0;
-				count = 15728640;
-				out = new BufferedOutputStream(fIn, 15360);
+				count = (int) supplier.length(streamIndex++);
+				out = new BufferedOutputStream(fIn, 61440);
 			}
 		}
 		catch(IOException e)
