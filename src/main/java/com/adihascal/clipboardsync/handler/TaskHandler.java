@@ -4,6 +4,7 @@ import com.adihascal.clipboardsync.Main;
 import com.adihascal.clipboardsync.network.ResumeListener;
 import com.adihascal.clipboardsync.network.SocketHolder;
 import com.adihascal.clipboardsync.tasks.ITask;
+import com.adihascal.clipboardsync.tasks.SendTask;
 
 import java.io.IOException;
 
@@ -25,7 +26,7 @@ public class TaskHandler
 	{
 		if(current == null)
 		{
-			current = new Thread(task);
+			current = new Thread(task, task instanceof SendTask ? "ClipboardSync SendTask" : "ClipboardSync ReceiveTask");
 		}
 		else
 		{
@@ -54,7 +55,7 @@ public class TaskHandler
 		synchronized(current)
 		{
 			SocketHolder.invalidate();
-			new Thread(new ResumeListener()).start();
+			new Thread(new ResumeListener(), "ClipboardSync ResumeListener").start();
 			current.wait();
 		}
 	}

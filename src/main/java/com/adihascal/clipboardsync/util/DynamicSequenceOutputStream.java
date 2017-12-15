@@ -1,7 +1,6 @@
 package com.adihascal.clipboardsync.util;
 
 import java.io.BufferedOutputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -15,22 +14,7 @@ public class DynamicSequenceOutputStream extends OutputStream
 	public DynamicSequenceOutputStream(IStreamSupplier<OutputStream> supp)
 	{
 		this.supplier = supp;
-	}
-	
-	@Override
-	public void write(int b) throws IOException
-	{
-		if(pos < count)
-		{
-			out.write(b);
-			pos++;
-		}
-		else
-		{
-			next(false);
-			out.write(b);
-			pos++;
-		}
+		next(false);
 	}
 	
 	private void next(boolean close)
@@ -45,7 +29,7 @@ public class DynamicSequenceOutputStream extends OutputStream
 			
 			if(!close)
 			{
-				FileOutputStream fIn = (FileOutputStream) supplier.next(streamIndex);
+				OutputStream fIn = supplier.next(streamIndex);
 				pos = 0;
 				count = (int) supplier.length(streamIndex++);
 				out = new BufferedOutputStream(fIn, 61440);
@@ -58,7 +42,22 @@ public class DynamicSequenceOutputStream extends OutputStream
 	}
 	
 	@Override
-	public void close() throws IOException
+	public void write(int b) throws IOException
+	{
+		if(pos < count)
+		{
+			out.write(b);
+			pos++;
+		}
+		else
+		{
+			next(false);
+			write(b);
+		}
+	}
+	
+	@Override
+	public void close()
 	{
 		if(out != null)
 		{

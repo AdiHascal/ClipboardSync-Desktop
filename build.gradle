@@ -1,9 +1,11 @@
+ext.moduleName = 'com.adihascal.clipboardsync'
 group 'com.adihascal.clipboardsync'
 version '1.0'
 
 apply plugin: 'java'
 
-sourceCompatibility = 1.8
+sourceCompatibility = 8
+targetCompatibility = 8
 
 repositories {
     mavenCentral()

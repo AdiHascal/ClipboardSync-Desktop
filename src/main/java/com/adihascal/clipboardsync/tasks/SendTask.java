@@ -1,6 +1,7 @@
 package com.adihascal.clipboardsync.tasks;
 
 import com.adihascal.clipboardsync.Main;
+import com.adihascal.clipboardsync.handler.GuiHandler.ProgramState;
 import com.adihascal.clipboardsync.handler.TaskHandler;
 import com.adihascal.clipboardsync.util.DynamicSequenceOutputStream;
 import com.adihascal.clipboardsync.util.IStreamSupplier;
@@ -25,7 +26,7 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 	private LinkedList<Object> objectsToSend = new LinkedList<>();
 	private DynamicSequenceOutputStream stream;
 	private int currentChunk = 0;
-	private long size = 0L;
+	private long size = 4L; //accounting for files.size()
 	private int nChunks;
 	
 	public SendTask(List<File> uList)
@@ -62,7 +63,7 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 		switch(o.getClass().getSimpleName())
 		{
 			case "String":
-				return getUTFLength((String) o) + 2;
+				return getUTFLength((String) o) + 2; //for the 2 null terminators
 			case "Integer":
 				return 4;
 			case "Long":
@@ -110,8 +111,9 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 				}
 			});
 			
+			Main.getGuiHandler().setStatus(ProgramState.SENDING_FILES);
 			files.forEach(this :: addToList);
-			size = objectsToSend.stream().mapToLong(this :: getObjectLength).sum();
+			size += objectsToSend.stream().mapToLong(this :: getObjectLength).sum();
 			nChunks = (int) Math.ceil((double) size / chunkSize);
 			
 			binFiles = new ArrayList<>(nChunks);
@@ -121,12 +123,11 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 				f.createNewFile();
 				binFiles.add(i, f);
 			}
-			
 			out().writeUTF("application/x-java-serialized-object");
 			out().writeLong(size);
-			out().writeInt(files.size());
 			
 			stream = new DynamicSequenceOutputStream(this);
+			stream.write(convertIntToBytes(files.size()));
 			objectsToSend.forEach(this :: writeObject);
 			stream.close();
 			finish();
@@ -154,6 +155,7 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 				{
 					stream.write(tempBuffer, 0, bytesRead);
 				}
+				in.close();
 			}
 		}
 		catch(IOException e)
@@ -287,11 +289,12 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 	
 	private void afterClose(int index, boolean recursive)
 	{
+		RandomAccessFile input = null;
 		try
 		{
 			byte[] buffer = new byte[chunkSize / 1024];
 			int bytesRead;
-			RandomAccessFile input = new RandomAccessFile(binFiles.get(index), "rw");
+			input = new RandomAccessFile(binFiles.get(index), "rw");
 			if(!recursive)
 			{
 				currentChunk++;
@@ -307,14 +310,17 @@ public class SendTask implements ITask, IStreamSupplier<OutputStream>
 			}
 			input.close();
 			Files.delete(binFiles.get(index).toPath());
+			System.out.println("closed " + index);
 		}
 		catch(IOException e)
 		{
 			try
 			{
+				input.close();
+				e.printStackTrace();
+				System.out.println("network error. waiting...");
 				TaskHandler.INSTANCE.pause();
 				afterClose(index, true);
-				e.printStackTrace();
 			}
 			catch(InterruptedException | IOException e1)
 			{

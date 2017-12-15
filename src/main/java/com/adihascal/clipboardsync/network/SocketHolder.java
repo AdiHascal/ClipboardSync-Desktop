@@ -29,6 +29,7 @@ public class SocketHolder
 	
 	static void init() throws IOException
 	{
+		invalidate();
 		socket = serverSocket.accept();
 		socketIn = new DataInputStream(socket.getInputStream());
 		socketOut = new DataOutputStream(socket.getOutputStream());

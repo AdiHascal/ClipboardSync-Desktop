@@ -2,6 +2,7 @@ package com.adihascal.clipboardsync.network;
 
 import com.adihascal.clipboardsync.Main;
 import com.adihascal.clipboardsync.handler.ClipHandlerRegistry;
+import com.adihascal.clipboardsync.handler.GuiHandler.ProgramState;
 import com.adihascal.clipboardsync.handler.IClipHandler;
 
 import java.awt.*;
@@ -15,6 +16,12 @@ import static com.adihascal.clipboardsync.network.SocketHolder.out;
 public class SyncServer extends Thread
 {
 	private Transferable temp;
+	private boolean paused = false;
+	
+	public SyncServer()
+	{
+		super("ClipBoardSync Server");
+	}
 	
 	@Override
 	public synchronized void run()
@@ -26,7 +33,7 @@ public class SyncServer extends Thread
 			while(true)
 			{
 				System.out.println("waiting for input");
-				while(Main.isBusy)
+				while(Main.isBusy && !paused)
 				{
 					wait(1000);
 				}
@@ -42,11 +49,13 @@ public class SyncServer extends Thread
 						break;
 					case "connect":
 						SyncClient.phoneAddress = in().readUTF();
+						Main.getGuiHandler().setPhoneName(in().readUTF()).setStatus(ProgramState.IDLE);
 						System.out.println(SyncClient.phoneAddress + " connected");
 						break;
 					case "disconnect":
 						System.out.println(SyncClient.phoneAddress + " disconnected");
 						SyncClient.phoneAddress = null;
+						Main.getGuiHandler().resetPhoneName().setStatus(ProgramState.DISCONNECTED);
 						SocketHolder.invalidate();
 						Main.restart();
 						return;
@@ -63,14 +72,20 @@ public class SyncServer extends Thread
 						}
 						break;
 					case "refuse":
+						this.temp = null;
+						Main.getGuiHandler().setStatus(ProgramState.IDLE);
 						System.out.println("remote refused local data");
 						break;
 					case "pause":
 						System.out.println("paused");
+						Main.getGuiHandler().setStatus(ProgramState.STANDBY);
+						paused = true;
 						Main.isBusy = true;
 						break;
 					case "resume":
 						System.out.println("resumed");
+						Main.getGuiHandler().setStatus(ProgramState.IDLE);
+						paused = false;
 						Main.isBusy = false;
 						break;
 				}

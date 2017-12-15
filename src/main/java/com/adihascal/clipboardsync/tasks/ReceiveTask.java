@@ -1,6 +1,7 @@
 package com.adihascal.clipboardsync.tasks;
 
 import com.adihascal.clipboardsync.Main;
+import com.adihascal.clipboardsync.handler.GuiHandler.ProgramState;
 import com.adihascal.clipboardsync.handler.TaskHandler;
 import com.adihascal.clipboardsync.network.SocketHolder;
 import com.adihascal.clipboardsync.transferable.FileListTransferable;
@@ -41,13 +42,14 @@ public class ReceiveTask implements ITask, IStreamSupplier<InputStream>
 		}
 		catch(IOException e)
 		{
-			e.printStackTrace();
 			try
 			{
 				System.out.println("network error. waiting.");
 				TaskHandler.INSTANCE.pause();
+				System.out.println("seeking to position " + totalBytesRead);
 				out().writeLong(totalBytesRead);
 				raf.seek(totalBytesRead);
+				System.out.println("receiving chunk " + currentChunk + " recursively");
 				getChunk(raf, length);
 			}
 			catch(InterruptedException | IOException e1)
@@ -60,9 +62,8 @@ public class ReceiveTask implements ITask, IStreamSupplier<InputStream>
 	private void deleteExisting() throws IOException
 	{
 		Files.list(Main.localFolder.toPath())
-				.filter(path -> !(Files.isDirectory(path) && (path.getFileName().toString().equals("chunks") || path
-						.getFileName().toString().equals("packed"))))
-				.forEach(this :: deleteFile);
+				.filter(path -> !(Files.isDirectory(path) && (path.getFileName().toString().equals("chunks") ||
+						path.getFileName().toString().equals("packed")))).forEach(this :: deleteFile);
 		Files.list(Main.packedTemp.toPath()).forEach(this :: deleteFile);
 	}
 	
@@ -97,34 +98,22 @@ public class ReceiveTask implements ITask, IStreamSupplier<InputStream>
 	{
 		try
 		{
+			Main.getGuiHandler().setStatus(ProgramState.RECEIVING_FILES);
 			deleteExisting();
-			size = in().readLong();
+			size = in().readLong(); //for the number of files
 			nChunks = (int) Math.ceil((double) size / chunkSize);
-			RandomAccessFile[] packedFiles = new RandomAccessFile[nChunks];
 			SocketHolder.getSocket().setSoTimeout(5000);
-			
+			new Thread(new Unpacker(), "ClipboardSync Unpacker").start();
 			for(int i = 0; i < nChunks; i++)
 			{
 				String path = Main.packedTemp.getPath() + "\\" + Integer.toString(i) + ".bin";
 				Files.createFile(Paths.get(path));
-				packedFiles[i] = new RandomAccessFile(path, "rw");
-			}
-			
-			new Thread(new Unpacker(this)).start();
-			for(int i = 0; i < packedFiles.length; i++)
-			{
-				RandomAccessFile raf = packedFiles[i];
-				long length;
-				if(i == packedFiles.length - 1 && size % chunkSize != 0)
-				{
-					length = size % chunkSize;
-				}
-				else
-				{
-					length = chunkSize;
-				}
-				getChunk(raf, length);
+				RandomAccessFile raf = new RandomAccessFile(path, "rw");
+				System.out.println("receiving chunk " + i);
+				getChunk(raf, length(i));
 				raf.close();
+				System.out.println("incrementing currentChunk to " + (currentChunk + 1));
+				//noinspection NonAtomicOperationOnVolatileField
 				currentChunk++;
 			}
 			finish();
@@ -140,6 +129,7 @@ public class ReceiveTask implements ITask, IStreamSupplier<InputStream>
 	{
 		try
 		{
+			System.out.println("loading chunk " + index);
 			return new FileInputStream(new File(Main.packedTemp, Integer.toString(index) + ".bin"));
 		}
 		catch(FileNotFoundException e)
@@ -161,6 +151,7 @@ public class ReceiveTask implements ITask, IStreamSupplier<InputStream>
 		try
 		{
 			Files.delete(Paths.get(Main.packedTemp.getPath(), Integer.toString(index) + ".bin"));
+			System.out.println("deleted chunk " + index);
 		}
 		catch(IOException e)
 		{
@@ -181,15 +172,9 @@ public class ReceiveTask implements ITask, IStreamSupplier<InputStream>
 		}
 	}
 	
-	private static class Unpacker implements Runnable
+	private class Unpacker implements Runnable
 	{
 		private DynamicSequenceInputStream src;
-		private IStreamSupplier<InputStream> supplier;
-		
-		private Unpacker(IStreamSupplier<InputStream> supp)
-		{
-			this.supplier = supp;
-		}
 		
 		private void read(List<File> toTransfer, String parent) throws IOException
 		{
@@ -248,7 +233,7 @@ public class ReceiveTask implements ITask, IStreamSupplier<InputStream>
 		{
 			try
 			{
-				this.src = new DynamicSequenceInputStream(this.supplier);
+				this.src = new DynamicSequenceInputStream(ReceiveTask.this);
 				int nFiles = src.readInt();
 				ArrayList<File> toTransfer = new ArrayList<>(nFiles);
 				for(int i = 0; i < nFiles; i++)

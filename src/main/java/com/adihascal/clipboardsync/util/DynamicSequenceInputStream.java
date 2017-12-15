@@ -6,6 +6,7 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 {
 	private final IStreamSupplier<InputStream> supplier;
 	private InputStream in;
+	private int read = 0;
 	private int streamIndex = 0;
 	
 	public DynamicSequenceInputStream(IStreamSupplier<InputStream> supp)
@@ -16,45 +17,15 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 	
 	public int read() throws IOException
 	{
-		int r = in.read();
-		if(r != -1)
+		int i = in.read();
+		if(i == -1)
 		{
-			return r;
-		}
-		else
-		{
+			System.out.println(read + " bytes read from stream " + (streamIndex - 1));
 			next(false);
-			return in.read();
+			return read();
 		}
-	}
-	
-	private void next(boolean close)
-	{
-		try
-		{
-			if(in != null)
-			{
-				in.close();
-				supplier.afterClose(streamIndex - 1);
-			}
-			
-			if(!close)
-			{
-				while(true)
-				{
-					if(supplier.canProvide(streamIndex))
-					{
-						FileInputStream fIn = (FileInputStream) supplier.next(streamIndex++);
-						in = new BufferedInputStream(fIn, 61440);
-						break;
-					}
-				}
-			}
-		}
-		catch(IOException e)
-		{
-			e.printStackTrace();
-		}
+		read++;
+		return i;
 	}
 	
 	@Override
@@ -65,11 +36,7 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 	
 	public int read(byte[] b, int off, int len) throws IOException
 	{
-		if(b == null)
-		{
-			throw new NullPointerException();
-		}
-		else if(off < 0 || len < 0 || len > b.length - off)
+		if(off < 0 || len < 0 || len > b.length - off)
 		{
 			throw new IndexOutOfBoundsException();
 		}
@@ -105,11 +72,46 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 	}
 	
 	@Override
-	public void close() throws IOException
+	public void close()
 	{
 		if(in != null)
 		{
+			System.out.println(read + " bytes read from stream " + (streamIndex - 1));
 			next(true);
+		}
+	}
+	
+	private void next(boolean close)
+	{
+		try
+		{
+			if(in != null)
+			{
+				in.close();
+				supplier.afterClose(streamIndex - 1);
+			}
+			
+			if(!close)
+			{
+				while(true)
+				{
+					if(supplier.canProvide(streamIndex))
+					{
+						read = 0;
+						InputStream next = supplier.next(streamIndex++);
+						in = new BufferedInputStream(next, 61440);
+						break;
+					}
+				}
+			}
+			else
+			{
+				System.out.println("closing");
+			}
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
 		}
 	}
 	
@@ -236,7 +238,7 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 		return Double.longBitsToDouble(readLong());
 	}
 	
-	public String readLine() throws IOException
+	public String readLine()
 	{
 		return null;
 	}

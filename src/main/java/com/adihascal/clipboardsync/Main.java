@@ -1,31 +1,28 @@
 package com.adihascal.clipboardsync;
 
+import com.adihascal.clipboardsync.handler.ClipHandlerRegistry;
+import com.adihascal.clipboardsync.handler.GuiHandler;
+import com.adihascal.clipboardsync.handler.TextHandler;
 import com.adihascal.clipboardsync.network.SyncClient;
 import com.adihascal.clipboardsync.network.SyncServer;
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.EncodeHintType;
-import com.google.zxing.common.BitMatrix;
-import com.google.zxing.qrcode.QRCodeWriter;
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.stage.Stage;
 import lc.kra.system.keyboard.GlobalKeyboardHook;
 import lc.kra.system.keyboard.event.GlobalKeyAdapter;
 import lc.kra.system.keyboard.event.GlobalKeyEvent;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.ClipboardOwner;
 import java.awt.datatransfer.Transferable;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.net.InetAddress;
-import java.util.EnumMap;
-import java.util.Map;
 
 import static lc.kra.system.keyboard.event.GlobalKeyEvent.*;
 
-public class Main implements ClipboardOwner
+public class Main extends Application implements ClipboardOwner
 {
 	public static final Main INSTANCE = new Main();
 	public static final File localFolder = new File(System.getProperty("user.home") + "/AppData/Local/ClipboardSync");
@@ -35,8 +32,9 @@ public class Main implements ClipboardOwner
 	private static SyncServer server = new SyncServer();
 	private static Transferable prev;
 	private static GlobalKeyboardHook hook = new GlobalKeyboardHook(true);
+	private static GuiHandler guiHandler;
 	
-	public static void main(String[] args) throws IOException
+	public static void main(String[] args)
 	{
 		port = 63708;
 		try
@@ -48,33 +46,6 @@ public class Main implements ClipboardOwner
 					throw new Exception("failed to create temporary folder");
 				}
 			}
-			File imageFile = new File(System.getProperty("user.home") + "/Desktop/image.png");
-			
-			Map<EncodeHintType, Object> hintMap = new EnumMap<>(EncodeHintType.class);
-			hintMap.put(EncodeHintType.CHARACTER_SET, "UTF-8");
-			hintMap.put(EncodeHintType.MARGIN, 1);
-			hintMap.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.L);
-			
-			BitMatrix matrix = new QRCodeWriter()
-					.encode(InetAddress.getLocalHost().getHostName() + "," + InetAddress.getLocalHost()
-							.getHostAddress(), BarcodeFormat.QR_CODE, 250, 250, hintMap);
-			BufferedImage image = new BufferedImage(matrix.getWidth(), matrix.getHeight(), BufferedImage.TYPE_INT_RGB);
-			Graphics graphics = image.getGraphics();
-			graphics.setColor(Color.WHITE);
-			graphics.fillRect(0, 0, matrix.getWidth(), matrix.getHeight());
-			graphics.setColor(Color.BLACK);
-			
-			for(int i = 0; i < matrix.getWidth(); i++)
-			{
-				for(int j = 0; j < matrix.getWidth(); j++)
-				{
-					if(matrix.get(i, j))
-					{
-						graphics.fillRect(i, j, 1, 1);
-					}
-				}
-			}
-			ImageIO.write(image, "png", imageFile);
 		}
 		catch(Exception e)
 		{
@@ -98,6 +69,13 @@ public class Main implements ClipboardOwner
 				}
 			}
 		});
+		Runtime.getRuntime().addShutdownHook(new Thread(() ->
+		{
+			new SyncClient("disconnect", null).start();
+			hook.shutdownHook();
+			server.interrupt();
+		}));
+		launch(args);
 	}
 	
 	private static void pastePrevAndSwap()
@@ -143,6 +121,11 @@ public class Main implements ClipboardOwner
 		return server;
 	}
 	
+	public static GuiHandler getGuiHandler()
+	{
+		return guiHandler;
+	}
+	
 	public static void restart()
 	{
 		server = new SyncServer();
@@ -159,7 +142,12 @@ public class Main implements ClipboardOwner
 			clipboard.setContents(content, Main.INSTANCE);
 			if(!isBusy)
 			{
-				prev = content;
+				if(ClipHandlerRegistry
+						.getHandlerFor(ClipHandlerRegistry.getSuitableFlavor(content.getTransferDataFlavors())
+								.getMimeType()) instanceof TextHandler)
+				{
+					prev = content;
+				}
 				new SyncClient("announce", content).start();
 			}
 		}
@@ -170,11 +158,25 @@ public class Main implements ClipboardOwner
 	}
 	
 	@Override
-	protected void finalize() throws Throwable
+	public void start(Stage primaryStage)
 	{
-		new SyncClient("disconnect", null).start();
-		hook.shutdownHook();
-		server.interrupt();
-		super.finalize();
+		try
+		{
+			FXMLLoader loader = new FXMLLoader(getClass().getResource("/layout.fxml"));
+			Parent root = loader.load();
+			guiHandler = loader.getController();
+			guiHandler.setup(primaryStage, root);
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
+	@Override
+	public void stop() throws Exception
+	{
+		super.stop();
+		System.exit(0);
 	}
 }

@@ -1,6 +1,7 @@
 package com.adihascal.clipboardsync.handler;
 
 import com.adihascal.clipboardsync.Main;
+import com.adihascal.clipboardsync.handler.GuiHandler.ProgramState;
 
 import java.awt.datatransfer.*;
 import java.io.IOException;
@@ -16,6 +17,7 @@ public class TextHandler implements IClipHandler
 		out().writeUTF("text/plain");
 		out().writeUTF((String) clip.getTransferData(DataFlavor.stringFlavor));
 		Main.isBusy = false;
+		Main.getGuiHandler().setStatus(ProgramState.IDLE);
 	}
 	
 	@Override
@@ -23,5 +25,6 @@ public class TextHandler implements IClipHandler
 	{
 		manager.setContents(new StringSelection(in().readUTF()), Main.INSTANCE);
 		Main.isBusy = false;
+		Main.getGuiHandler().setStatus(ProgramState.IDLE);
 	}
 }

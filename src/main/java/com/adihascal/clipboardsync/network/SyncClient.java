@@ -2,6 +2,7 @@ package com.adihascal.clipboardsync.network;
 
 import com.adihascal.clipboardsync.Main;
 import com.adihascal.clipboardsync.handler.ClipHandlerRegistry;
+import com.adihascal.clipboardsync.handler.GuiHandler.ProgramState;
 import com.adihascal.clipboardsync.handler.IClipHandler;
 import com.adihascal.clipboardsync.handler.IntentHandler;
 
@@ -18,6 +19,7 @@ public class SyncClient extends Thread
 	
 	public SyncClient(String comm, Object args)
 	{
+		super("ClipboardSync Client");
 		this.args = args;
 		this.command = comm;
 	}
@@ -42,6 +44,7 @@ public class SyncClient extends Thread
 						IClipHandler handler = ClipHandlerRegistry.getHandlerFor(ClipHandlerRegistry
 								.getSuitableFlavor(((Transferable) this.args).getTransferDataFlavors()).getMimeType());
 						out().writeBoolean(handler instanceof IntentHandler);
+						Main.getGuiHandler().setStatus(ProgramState.WAITING_FOR_RESPONSE);
 						System.out.println("remote aware of pending local data");
 						break;
 				}
