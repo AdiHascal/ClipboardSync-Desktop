@@ -1,13 +1,17 @@
 package com.adihascal.clipboardsync.handler;
 
+import com.adihascal.clipboardsync.network.SyncClient;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.text.Text;
@@ -25,8 +29,9 @@ import java.util.EnumMap;
 import java.util.Map;
 
 @SuppressWarnings("UnusedReturnValue")
-public class GuiHandler
+public class GuiHandler implements EventHandler<ActionEvent>
 {
+	public Button btnDisconnect;
 	private Parent root;
 	private boolean init = false;
 	
@@ -36,6 +41,7 @@ public class GuiHandler
 		{
 			this.root = parent;
 			setImage();
+			this.btnDisconnect.setOnAction(this);
 			primaryStage.setScene(new Scene(root));
 			primaryStage.setTitle("ClipboardSync");
 			primaryStage.setResizable(false);
@@ -115,6 +121,20 @@ public class GuiHandler
 	{
 		((Text) this.root.lookup("#status")).setText(state.getDisplayName());
 		return this;
+	}
+	
+	@Override
+	public void handle(ActionEvent event)
+	{
+		if(event.getSource() == this.btnDisconnect)
+		{
+			disconnect();
+		}
+	}
+	
+	private void disconnect()
+	{
+		new SyncClient("disconnect", null).start();
 	}
 	
 	public enum ProgramState

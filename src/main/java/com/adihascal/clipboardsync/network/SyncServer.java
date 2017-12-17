@@ -53,7 +53,10 @@ public class SyncServer extends Thread
 						System.out.println(SyncClient.phoneAddress + " connected");
 						break;
 					case "disconnect":
-						System.out.println(SyncClient.phoneAddress + " disconnected");
+						if(SyncClient.phoneAddress != null)
+						{
+							System.out.println(SyncClient.phoneAddress + " disconnected");
+						}
 						SyncClient.phoneAddress = null;
 						Main.getGuiHandler().resetPhoneName().setStatus(ProgramState.DISCONNECTED);
 						SocketHolder.invalidate();
