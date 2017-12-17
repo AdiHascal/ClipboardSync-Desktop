@@ -15,6 +15,40 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 		next(false);
 	}
 	
+	private void next(boolean close)
+	{
+		try
+		{
+			if(in != null)
+			{
+				in.close();
+				supplier.afterClose(streamIndex - 1);
+			}
+			
+			if(!close)
+			{
+				while(true)
+				{
+					if(supplier.canProvide(streamIndex))
+					{
+						read = 0;
+						InputStream next = supplier.next(streamIndex++);
+						in = new BufferedInputStream(next, 61440);
+						break;
+					}
+				}
+			}
+			else
+			{
+				System.out.println("closing");
+			}
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+	
 	public int read() throws IOException
 	{
 		int i = in.read();
@@ -26,12 +60,6 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 		}
 		read++;
 		return i;
-	}
-	
-	@Override
-	public void readFully(byte[] b) throws IOException
-	{
-		readFully(b, 0, b.length);
 	}
 	
 	public int read(byte[] b, int off, int len) throws IOException
@@ -81,38 +109,10 @@ public class DynamicSequenceInputStream extends InputStream implements DataInput
 		}
 	}
 	
-	private void next(boolean close)
+	@Override
+	public void readFully(byte[] b) throws IOException
 	{
-		try
-		{
-			if(in != null)
-			{
-				in.close();
-				supplier.afterClose(streamIndex - 1);
-			}
-			
-			if(!close)
-			{
-				while(true)
-				{
-					if(supplier.canProvide(streamIndex))
-					{
-						read = 0;
-						InputStream next = supplier.next(streamIndex++);
-						in = new BufferedInputStream(next, 61440);
-						break;
-					}
-				}
-			}
-			else
-			{
-				System.out.println("closing");
-			}
-		}
-		catch(IOException e)
-		{
-			e.printStackTrace();
-		}
+		readFully(b, 0, b.length);
 	}
 	
 	@Override

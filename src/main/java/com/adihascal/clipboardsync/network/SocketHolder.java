@@ -35,6 +35,14 @@ public class SocketHolder
 		socketOut = new DataOutputStream(socket.getOutputStream());
 	}
 	
+	public static void invalidate() throws IOException
+	{
+		if(socket != null)
+		{
+			socket.close();
+		}
+	}
+	
 	public static DataInputStream in()
 	{
 		return socketIn;
@@ -48,13 +56,5 @@ public class SocketHolder
 	public static DataOutputStream out()
 	{
 		return socketOut;
-	}
-	
-	public static void invalidate() throws IOException
-	{
-		if(socket != null)
-		{
-			socket.close();
-		}
 	}
 }
