@@ -8,6 +8,7 @@ import com.adihascal.clipboardsync.handler.IClipHandler;
 import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
+import java.io.FileWriter;
 import java.io.IOException;
 
 import static com.adihascal.clipboardsync.network.SocketHolder.in;
@@ -49,6 +50,9 @@ public class SyncServer extends Thread
 						break;
 					case "connect":
 						SyncClient.phoneAddress = in().readUTF();
+						FileWriter writer = new FileWriter(Main.savedData);
+						writer.write(SyncClient.phoneAddress);
+						writer.close();
 						Main.getGuiHandler().setPhoneName(in().readUTF()).setStatus(ProgramState.IDLE);
 						System.out.println(SyncClient.phoneAddress + " connected");
 						break;

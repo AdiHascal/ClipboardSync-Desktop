@@ -25,8 +25,10 @@ import static lc.kra.system.keyboard.event.GlobalKeyEvent.*;
 public class Main extends Application implements ClipboardOwner
 {
 	public static final Main INSTANCE = new Main();
-	public static final File localFolder = new File(System.getProperty("user.home") + "/AppData/Local/ClipboardSync");
+	public static final File localFolder = new File(System
+			.getProperty("user.home") + "/AppData/Local/ClipboardSync/working_dir");
 	public static final File packedTemp = new File(localFolder, "packed");
+	public static final File savedData = new File(localFolder, "../lastip");
 	public static volatile boolean isBusy = false;
 	private static int port;
 	private static SyncServer server = new SyncServer();

@@ -1,5 +1,6 @@
 package com.adihascal.clipboardsync.handler;
 
+import com.adihascal.clipboardsync.Main;
 import com.adihascal.clipboardsync.network.SyncClient;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
@@ -20,10 +21,9 @@ import javafx.stage.Stage;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.InetAddress;
+import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.EnumMap;
 import java.util.Map;
@@ -32,6 +32,7 @@ import java.util.Map;
 public class GuiHandler implements EventHandler<ActionEvent>
 {
 	public Button btnDisconnect;
+	public Button btnConnect;
 	private Parent root;
 	private boolean init = false;
 	
@@ -42,6 +43,7 @@ public class GuiHandler implements EventHandler<ActionEvent>
 			this.root = parent;
 			setImage();
 			this.btnDisconnect.setOnAction(this);
+			this.btnConnect.setOnAction(this);
 			primaryStage.setScene(new Scene(root));
 			primaryStage.setTitle("ClipboardSync");
 			primaryStage.setResizable(false);
@@ -130,11 +132,32 @@ public class GuiHandler implements EventHandler<ActionEvent>
 		{
 			disconnect();
 		}
+		else if(event.getSource() == this.btnConnect)
+		{
+			reconnectLast();
+		}
 	}
 	
 	private void disconnect()
 	{
 		new SyncClient("disconnect", null).start();
+	}
+	
+	private void reconnectLast()
+	{
+		try
+		{
+			BufferedReader reader = new BufferedReader(new FileReader(Main.savedData));
+			Socket sock = new Socket(reader.readLine(), 63709);
+			DataOutputStream out = new DataOutputStream(sock.getOutputStream());
+			out.writeUTF("connect");
+			sock.close();
+			reader.close();
+		}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+		}
 	}
 	
 	public enum ProgramState
